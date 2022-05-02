@@ -25,3 +25,9 @@ It uses an Arduino mega in order to satify the potentially high number of wires 
 X = wire mismatch\
 Y = 1 input has multiple outputs\
 short-circuit = input loops back to another input
+
+### Algorithm
+Using the cable template, the arduino will go trough the cable input wires.
+5 volts are applied to the input wire. The arduino checks all other wires for signal.
+It than determines if the signal is detected on correct wires, otherwise finds the type of error.
+After this process, voltage is no longer applied to the currect pin and the arduino continues to the next input pin.
