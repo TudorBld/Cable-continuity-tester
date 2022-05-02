@@ -2,11 +2,13 @@
 A cable tester for multiple wire cables.
 
 ### Scope
-This project provides code and instructions for building a general porpouse multi-wire cable tester.
+This project provides code and instructions for building a general porpouse multi-wire cable tester.\
+It uses an Arduino mega in order to satify the potentially high number of wires in a cable.
 
 ### Project requirements
 - Test for 0, X, Y and short-circuit type errors*
 - Programable wire template
+- Save the wire template.
 - LED indication of errors
 - LCD display for detailed explanation of errors
 - Different testing modes:
@@ -15,6 +17,7 @@ This project provides code and instructions for building a general porpouse mult
   - Stop on error: if current wire is OK, jumpes to the next. Otherwise waits for user input.
   - Blind: checks without template. Shows where every wire goes.
 - Accept a golden standard cable template
+- Be able to accept a new template without reprogramming the arduino.
 
 \
 \*\
