@@ -2,9 +2,10 @@
 
 ## Definitions
 Cable = a collection of wires with a specific arrangement of the wires within.
-Wire = a single connections between an input pin and an output pin.
+Wire = a connection between an input pin and one or more output pins.
 Input pin = a pin whitch belogs to the input connector.
 Output pin = a pin whitch belongs to the output connector
+Pin ID = the unique number given to a pin. The ID-s start from 0. ID-s must be consecutive. The input pins have the lowest ID-s.
 Wire template = the correct arrangement of wires within a cable.
 
 This is a cable
@@ -18,46 +19,46 @@ This is a cable
 Input pins     Input connector	   Wires       Output connector     Output pins
 
 
-## The template is saved within a 2-dimensional array saved at the address given by a double pointer.
-We use a bi-dimensional array for single input pins that connect to multiple output pins.
+## The template is saved within a 2-dimensional array.
+We use a 2-dimensional array for input pins that connect to multiple output pins.
 
-T - double pointer to the template
+T - the array whitch holds the template
 
-T[0] - simple pointers to the actual pin connections
-T[1] - simple pointers to the actual pin connections
+T[0] - 1-dimensional array with the id-s of the pins connected to the first input pin
+T[1] - 1-dimensional array with the id-s of the pins connected to the second input pin
  ... 
-T[n] - simple pointers to the actual pin connections
+T[n] - 1-dimensional array with the id-s of the pins connected to the first n'th pin
 
-T[1][1] = k - k is the number of the output pin connected to input pin 1.
-T[1][2] = k - k is the number of the output pin connected to input pin 1.	// For input pins with multiple output pins
+T[1][1] = k - k is the ID of the output pin connected to input pin 1.
+T[1][2] = m - m is the ID of the output pin connected to input pin 1.	// For input pins with multiple output pins
 
-After the last output pin, a special value is added to mark the end of the pin list. This special value is -1.
+After the last pin int in the row, a special value is added to mark the end of the row. This special value is -1.
 
 ## EXAMPLE
 
 	    ######################           ######################
-	0---|--------------------|-----------|--------------------|---7
-	1---|--------------------|-----------|--------------------|---8
-	2---|--------------------|-----------|--------------------|---9
+	0---|--------------------|-----------|--------------------|---3
+	1---|--------------------|-----------|--------------------|---4
+	2---|--------------------|-----------|--------------------|---5
 	    ######################           ######################
 
 The array is:
-T[0] : 7 -1
-T[1] : 8 -1
-T[2] : 9 -1
+T[0] : 3 -1
+T[1] : 4 -1
+T[2] : 5 -1
 
 ## EXAMPLE 2
                                                   ######################
-	    ######################     |----------|--------------------|---7
-	0---|--------------------|-----|----------|--------------------|---8
-	1---|--------------------|----------------|--------------------|---9
-	2---|--------------------|----------------|--------------------|---10
+	    ######################     |----------|--------------------|---3
+	0---|--------------------|-----|----------|--------------------|---4
+	1---|--------------------|----------------|--------------------|---5
+	2---|--------------------|----------------|--------------------|---6
 	    ######################                ######################
 
 The array is:
-T[0] : 7 8 -1
-T[1] : 9 -1
-T[2] : 10 -1
+T[0] : 3 4 -1
+T[1] : 5 -1
+T[2] : 6 -1
 
 
 
