@@ -1,0 +1,24 @@
+#define MAX_ERRORS 10
+
+struct err
+{
+  int err_count = 0;
+  int err_list[MAX_ERRORS][3];
+  //open circuit = 0
+  //mismatch (X) = 1
+  //Y = 2
+  //short circuit = 3
+};
+
+## Is a structure witch holds data about found errors.
+
+!!! ATENTION: the number of errors within an err variable must not exceed MAX_ERRORS!
+
+err_count - counts the number of errors detected.
+err_list[MAX_ERRORS][3] - a 2-dimensional array whitch holds error data about specific pins
+|a| - ID of faulty input pin
+|b| - ID of error
+|c| - ID of destination pin
+
+## The final report
+The final report will contain no more than MAX_ERRORS errors. It will be analized by an analizing function. (multiple X errors on the same input pin will be tranformed into a Y error)
