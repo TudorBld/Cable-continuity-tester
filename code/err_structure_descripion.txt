@@ -4,10 +4,12 @@ struct err
 {
   int err_count = 0;
   int err_list[MAX_ERRORS][3];
+
   //open circuit = 0
   //mismatch (X) = 1
   //Y = 2
   //short circuit = 3
+
 };
 
 ## Is a structure witch holds data about found errors.

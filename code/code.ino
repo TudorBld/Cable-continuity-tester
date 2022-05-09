@@ -11,7 +11,7 @@ struct cable
   int CO_2 = -1;    //Last sequential pin number of OUTPUT CONNECTOR 2
   int CO_3 = -1;    //Last sequential pin number of OUTPUT CONNECTOR 3
 
-  int T[100][100];
+  int T[50][5];
 };
 
 struct err
@@ -24,7 +24,7 @@ struct err
   int err_list[MAX_ERRORS][3];
 };
 
-err check_pin(cable C, int i)
+err check_pin(cable C, const int i)
 {
   //TO DO
   //Check if i belongs to the input connector
@@ -33,68 +33,116 @@ err check_pin(cable C, int i)
 
   pinMode(HW_P[i], OUTPUT);
   digitalWrite(HW_P[i], HIGH);
+  delay(1);
 
   int j = 0;
   while(C.T[i][j] != -1)  //Check correct wires
   {
-    if(digitalRead(HW_P[C.T[i][j]]) != HIGH)
+    if(digitalRead(HW_P[C.T[i][j]]) == LOW)
     {
       if(report.err_count < MAX_ERRORS)
       {
+        report.err_list[report.err_count][0] = i;          //ID of faulty pin
+        report.err_list[report.err_count][1] = 0;          //error ID (in this case open circuit)
+        report.err_list[report.err_count][2] = C.T[i][j];  //destination pin
         report.err_count ++;
-        report.err_list[err_count - 1][0] = i;          //ID of faulty pin
-        report.err_list[err_count - 1][1] = 0;          //error ID
-        report.err_list[err_count - 1][2] = C.T[i][j];  //destination pin
       }
     }
     j++;
   }
   
-  for(int j = 0; j < C.tot_pins; j++)   //Check the rest of the wires
+  for(j = 0; j < C.tot_pins; j++)   //Check the rest of the wires
   {
-    //Only check incorrect wires (correct ones have allready been tested)
-    int incorrect = 0;
+    //Only check incorrect wires (correct ones have already been tested)
+    int incorrect = 1;
     int k = 0;
-    while(C.T[i][k] != -1)
+    while(C.T[i][k] != -1)  //go trough the current template line
     {
-      if (j != C.T[i][k])
+      if (j == C.T[i][k])
       {
-        incorrect = 1;
+        incorrect = 0;
       }
       k++;
     }
     if(j == i)
     {
-      incorrect = 1;
+      incorrect = 0;
     }
 
-    if(incorrect)   //Checking wires that are incorrect
+    if(incorrect == 1)   //Checking wires that are incorrect
     {
-      //check for short circuit errors
-      if(j < C.CI && digitalRead(HW_P[C.T[i][j]]) == HIGH)
+      //check for short-circuit errors
+      if(j <= C.CI && digitalRead(HW_P[j]) == HIGH && i < j)
       {
-        report.short_c++;
+        report.err_list[report.err_count][0] = i;          //ID of faulty pin
+        report.err_list[report.err_count][1] = 3;          //error ID (in this case short circuit)
+        report.err_list[report.err_count][2] = j;  //destination pin
+        report.err_count ++;
       }
-      if(j >= C.CI && j < C.CO_1 && digitalRead(HW_P[C.T[i][j]]) == HIGH)
+      //check for mismatch errors
+      if(j > C.CI && j <= C.CO_1 && digitalRead(HW_P[j]) == HIGH)
       {
-        report.X++;
+        report.err_list[report.err_count][0] = i;          //ID of faulty pin
+        report.err_list[report.err_count][1] = 1;          //error ID (in this case mismatch)
+        report.err_list[report.err_count][2] = j;  //destination pin
+        report.err_count ++;
       }
     }
   }
 
   //Put current pin back to INPUT and Return results
+  digitalWrite(HW_P[i], LOW);
   pinMode(HW_P[i], INPUT);
+  delay(1);
   return report;
 }
 
 //Declare a cable variable and initialize it with data as described in the cable_template_format.txt file
+cable C;
 
 void setup()
 {
-  
+  //Initializing the cable
+  C.tot_pins = 6;
+  C.CI = 2;
+  C.CO_1 = 5;
+
+  C.T[0][0] = 3;
+  C.T[0][1] = -1;
+
+  C.T[1][0] = 4;
+  C.T[1][1] = -1;
+
+  C.T[2][0] = 5;
+  C.T[2][1] = -1;
+
+  Serial.begin(9600);
 }
 
 void loop()
 {
-  
+  Serial.println("################");
+  for(int in_pin = 0; in_pin <= C.CI; in_pin++)
+  {
+    err rep = check_pin(C, in_pin);
+    int i = 0;
+    Serial.print("Number of errors on in_pin ");
+    Serial.print(in_pin);
+    Serial.print(": ");
+    Serial.println(rep.err_count);
+    while(i < rep.err_count && i < MAX_ERRORS)
+    {
+      Serial.print(rep.err_list[i][0]);
+      Serial.print(" ");
+      Serial.print(rep.err_list[i][1]);
+      Serial.print(" ");
+      Serial.println(rep.err_list[i][2]);
+      i++;
+    }
+  }
+
+  while(true)
+  {
+    delay(10);
+  }
 }
