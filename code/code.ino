@@ -33,7 +33,7 @@ err check_pin(cable C, const int i)
 
   pinMode(HW_P[i], OUTPUT);
   digitalWrite(HW_P[i], HIGH);
-  delay(1);
+  delay(1000);
 
   int j = 0;
   while(C.T[i][j] != -1)  //Check correct wires
@@ -103,18 +103,18 @@ cable C;
 void setup()
 {
   //Initializing the cable
-  C.tot_pins = 6;
-  C.CI = 2;
+  C.tot_pins = 4;
+  C.CI = 1;
   C.CO_1 = 5;
 
-  C.T[0][0] = 3;
+  C.T[0][0] = 2;
   C.T[0][1] = -1;
 
-  C.T[1][0] = 4;
+  C.T[1][0] = 3;
   C.T[1][1] = -1;
 
-  C.T[2][0] = 5;
-  C.T[2][1] = -1;
+  //C.T[2][0] = 5;
+  //C.T[2][1] = -1;
 
   Serial.begin(9600);
 }
