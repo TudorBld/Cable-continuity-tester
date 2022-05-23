@@ -1,4 +1,10 @@
 #define MAX_ERRORS 10
+#define MASTER_GOOD A14
+#define MASTER_ERROR A15
+
+#define RED_BRIGHTNESS 70
+
+#include <SoftPWM.h>
 
 //46 available pins in this array
 int HW_P[] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53};
@@ -31,9 +37,11 @@ err check_pin(cable C, const int i)
   err report;
   report.err_count = 0;
 
+  //Make sure MASTER_GOOD LED is NOT on when testing
+  digitalWrite(MASTER_GOOD, LOW);
+
   pinMode(HW_P[i], OUTPUT);
   digitalWrite(HW_P[i], HIGH);
-  delay(1000);
 
   int j = 0;
   while(C.T[i][j] != -1)  //Check correct wires
@@ -42,6 +50,8 @@ err check_pin(cable C, const int i)
     {
       if(report.err_count < MAX_ERRORS)
       {
+        //digitalWrite(MASTER_ERROR, HIGH);
+        SoftPWMSet(MASTER_ERROR, RED_BRIGHTNESS);
         report.err_list[report.err_count][0] = i;          //ID of faulty pin
         report.err_list[report.err_count][1] = 0;          //error ID (in this case open circuit)
         report.err_list[report.err_count][2] = C.T[i][j];  //destination pin
@@ -74,6 +84,8 @@ err check_pin(cable C, const int i)
       //check for short-circuit errors
       if(j <= C.CI && digitalRead(HW_P[j]) == HIGH && i < j)
       {
+        //digitalWrite(MASTER_ERROR, HIGH);
+        SoftPWMSet(MASTER_ERROR, RED_BRIGHTNESS);
         report.err_list[report.err_count][0] = i;          //ID of faulty pin
         report.err_list[report.err_count][1] = 3;          //error ID (in this case short circuit)
         report.err_list[report.err_count][2] = j;  //destination pin
@@ -82,6 +94,8 @@ err check_pin(cable C, const int i)
       //check for mismatch errors
       if(j > C.CI && j <= C.CO_1 && digitalRead(HW_P[j]) == HIGH)
       {
+        //digitalWrite(MASTER_ERROR, HIGH);
+        SoftPWMSet(MASTER_ERROR, RED_BRIGHTNESS);
         report.err_list[report.err_count][0] = i;          //ID of faulty pin
         report.err_list[report.err_count][1] = 1;          //error ID (in this case mismatch)
         report.err_list[report.err_count][2] = j;  //destination pin
@@ -89,6 +103,8 @@ err check_pin(cable C, const int i)
       }
     }
   }
+  //Visual LED debugging
+  delay(1000);
 
   //Put current pin back to INPUT and Return results
   digitalWrite(HW_P[i], LOW);
@@ -116,12 +132,18 @@ void setup()
   //C.T[2][0] = 5;
   //C.T[2][1] = -1;
 
+  SoftPWMBegin();
+  SoftPWMSet(MASTER_ERROR, 0);
+  pinMode(MASTER_GOOD, OUTPUT);
+  digitalWrite(MASTER_GOOD, LOW);
+
   Serial.begin(9600);
 }
 
 void loop()
 {
   Serial.println("##### BEGIN CABLE TESTING ... #####");
+  int error_found = 0;
   for(int in_pin = 0; in_pin <= C.CI; in_pin++)
   {
     err rep = check_pin(C, in_pin);
@@ -130,6 +152,10 @@ void loop()
     Serial.print(in_pin);
     Serial.print(": ");
     Serial.println(rep.err_count);
+    if(rep.err_count > 0)
+    {
+      error_found = 1;
+    }
     while(i < rep.err_count && i < MAX_ERRORS)
     {
       Serial.print(rep.err_list[i][0]);
@@ -139,6 +165,10 @@ void loop()
       Serial.println(rep.err_list[i][2]);
       i++;
     }
+  }
+  if(error_found == 0)
+  {
+    digitalWrite(MASTER_GOOD, HIGH);
   }
   Serial.println("##### CABLE TESTING DONE (send r or R for rerun ... #####");
   Serial.println();
@@ -152,6 +182,9 @@ void loop()
       {
         ;
       }
+      digitalWrite(MASTER_GOOD, LOW);
+      //digitalWrite(MASTER_ERROR, LOW);
+      SoftPWMSet(MASTER_ERROR, 0);
       break;
     }
   }
