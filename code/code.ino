@@ -121,7 +121,7 @@ void setup()
 
 void loop()
 {
-  Serial.println("################");
+  Serial.println("##### BEGIN CABLE TESTING ... #####");
   for(int in_pin = 0; in_pin <= C.CI; in_pin++)
   {
     err rep = check_pin(C, in_pin);
@@ -140,9 +140,19 @@ void loop()
       i++;
     }
   }
+  Serial.println("##### CABLE TESTING DONE (send r or R for rerun ... #####");
+  Serial.println();
 
   while(true)
   {
-    delay(10);
+    char Redo = Serial.read();
+    if(Redo == 'r' || Redo == 'R')
+    {
+      while(Serial.read() >= 0)
+      {
+        ;
+      }
+      break;
+    }
   }
 }
