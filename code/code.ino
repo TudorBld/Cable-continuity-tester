@@ -1,6 +1,7 @@
 #define MAX_ERRORS 10
 #define MASTER_GOOD A14
 #define MASTER_ERROR A15
+#define BUTTON_NEXT A8
 
 #define RED_BRIGHTNESS 70
 
@@ -30,7 +31,7 @@ struct err
   int err_list[MAX_ERRORS][3];
 };
 
-err check_pin(cable C, const int i)
+err check_pin(cable C, const int i, const int SOE = 1)
 {
   //TO DO
   //Check if i belongs to the input connector
@@ -106,6 +107,24 @@ err check_pin(cable C, const int i)
   //Visual LED debugging
   delay(1000);
 
+  //Stop on error if required
+  if(SOE == 1 && report.err_count > 0)
+  {
+    delay(500); //Do not register previous long presses
+    while(1)
+    {
+      char next = Serial.read();
+      if(digitalRead(BUTTON_NEXT) == 0 || next == 'c' || next == 'C')
+      {
+        while(Serial.read() >= 0)
+        {
+          ; //Empty Serial buffer
+        }
+        break;  //exit infinite loop
+      }
+    }
+  }
+
   //Put current pin back to INPUT and Return results
   digitalWrite(HW_P[i], LOW);
   pinMode(HW_P[i], INPUT);
@@ -119,6 +138,7 @@ cable C;
 void setup()
 {
   //Initializing the cable
+  /*
   C.tot_pins = 4;
   C.CI = 1;
   C.CO_1 = 5;
@@ -131,11 +151,79 @@ void setup()
 
   //C.T[2][0] = 5;
   //C.T[2][1] = -1;
+  */
+
+  //complicated test cable
+  C.CI = 14;
+  C.CO_1 = 21;
+  C.CO_2 = 28;
+  C.CO_3 = 43;
+
+  C.T[0][0] = 17;
+  C.T[0][1] = 30;
+  C.T[0][2] = -1;
+
+  C.T[1][0] = 19;
+  C.T[1][0] = 31;
+  C.T[1][0] = -1;
+
+  C.T[2][0] = 28;
+  C.T[2][1] = 32;
+  C.T[2][2] = -1;
+  
+  C.T[3][0] = 15;
+  C.T[3][1] = 33;
+  C.T[3][2] = -1;
+
+  C.T[4][0] = 16;
+  C.T[4][1] = 34;
+  C.T[4][2] = -1;
+
+  C.T[5][0] = 20;
+  C.T[5][1] = 35;
+  C.T[5][2] = -1;
+
+  C.T[6][0] = 18;
+  C.T[6][1] = 36;
+  C.T[6][2] = -1;
+
+  C.T[7][0] = 24;
+  C.T[7][1] = 37;
+  C.T[7][2] = -1;
+
+  C.T[8][0] = 25;
+  C.T[8][1] = 38;
+  C.T[8][2] = -1;
+
+  C.T[9][0] = -1;
+
+  C.T[10][0] = 21;
+  C.T[10][1] = 39;
+  C.T[10][2] = -1;
+
+  C.T[11][0] = 27;
+  C.T[11][1] = 40;
+  C.T[11][2] = -1;
+
+  C.T[12][0] = 22;
+  C.T[12][1] = 41;
+  C.T[12][2] = -1;
+
+  C.T[13][0] = 23;
+  C.T[13][1] = 42;
+  C.T[13][2] = -1;
+
+  C.T[14][0] = 26;
+  C.T[14][1] = 43;
+  C.T[14][2] = -1;
+  
 
   SoftPWMBegin();
   SoftPWMSet(MASTER_ERROR, 0);
   pinMode(MASTER_GOOD, OUTPUT);
   digitalWrite(MASTER_GOOD, LOW);
+
+  pinMode(BUTTON_NEXT, INPUT_PULLUP);
 
   Serial.begin(9600);
 }
