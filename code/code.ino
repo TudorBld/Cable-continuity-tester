@@ -7,8 +7,9 @@
 
 #include <SoftPWM.h>
 
-//46 available pins in this array
+// available pins in this array
 int HW_P[] = {2, 3, 4, 5, 6, 7, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, A0, A1, A2, A3, A4, A5, A6, A7};
+//            0  1  2  3  4  5  6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38  39  40  41  41  42  43  44
 
 struct cable
 {
@@ -43,6 +44,7 @@ err check_pin(cable C, const int i, const int SOE = 1)
 
   pinMode(HW_P[i], OUTPUT);
   digitalWrite(HW_P[i], HIGH);
+  delay(10);  //Wait for some capacitor to charge?
 
   int j = 0;
   while(C.T[i][j] != -1)  //Check correct wires
@@ -93,7 +95,7 @@ err check_pin(cable C, const int i, const int SOE = 1)
         report.err_count ++;
       }
       //check for mismatch errors
-      if(j > C.CI && j <= C.CO_1 && digitalRead(HW_P[j]) == HIGH)
+      if(j > C.CI && j <= C.CO_3 && digitalRead(HW_P[j]) == HIGH)
       {
         //digitalWrite(MASTER_ERROR, HIGH);
         SoftPWMSet(MASTER_ERROR, RED_BRIGHTNESS);
@@ -105,12 +107,12 @@ err check_pin(cable C, const int i, const int SOE = 1)
     }
   }
   //Visual LED debugging
-  delay(1000);
+  delay(1);
 
   print_S(report, i);
 
   //Stop on error if required
-  if(SOE == 1 && report.err_count > 0)
+  if((SOE == 1 && report.err_count > 0) || 1)
   {
     delay(500); //Do not register previous long presses
     while(1)
@@ -179,41 +181,43 @@ void setup()
   C.CO_1 = 21;
   C.CO_2 = 28;
   C.CO_3 = 43;
+  C.tot_pins = 44;
+
 
   C.T[0][0] = 17;
-  C.T[0][1] = 30;
+  C.T[0][1] = 29;
   C.T[0][2] = -1;
 
   C.T[1][0] = 19;
-  C.T[1][0] = 31;
-  C.T[1][0] = -1;
+  C.T[1][1] = 30;
+  C.T[1][2] = -1;
 
   C.T[2][0] = 28;
-  C.T[2][1] = 32;
+  C.T[2][1] = 31;
   C.T[2][2] = -1;
   
   C.T[3][0] = 15;
-  C.T[3][1] = 33;
+  C.T[3][1] = 32;
   C.T[3][2] = -1;
 
   C.T[4][0] = 16;
-  C.T[4][1] = 34;
+  C.T[4][1] = 33;
   C.T[4][2] = -1;
 
   C.T[5][0] = 20;
-  C.T[5][1] = 35;
+  C.T[5][1] = 34;
   C.T[5][2] = -1;
 
   C.T[6][0] = 18;
-  C.T[6][1] = 36;
+  C.T[6][1] = 35;
   C.T[6][2] = -1;
 
   C.T[7][0] = 24;
-  C.T[7][1] = 37;
+  C.T[7][1] = 36;
   C.T[7][2] = -1;
 
   C.T[8][0] = 25;
-  C.T[8][1] = 38;
+  C.T[8][1] = 37;
   C.T[8][2] = -1;
 
   C.T[9][0] = -1;
@@ -255,7 +259,7 @@ void loop()
   int error_found = 0;
   for(int in_pin = 0; in_pin <= C.CI; in_pin++)
   {
-    err rep = check_pin(C, in_pin, 0);
+    err rep = check_pin(C, in_pin);
     if(rep.err_count > 0)
     {
       error_found = 1;
