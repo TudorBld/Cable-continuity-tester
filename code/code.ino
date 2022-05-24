@@ -8,7 +8,7 @@
 #include <SoftPWM.h>
 
 //46 available pins in this array
-int HW_P[] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53};
+int HW_P[] = {2, 3, 4, 5, 6, 7, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, A0, A1, A2, A3, A4, A5, A6, A7};
 
 struct cable
 {
@@ -107,6 +107,8 @@ err check_pin(cable C, const int i, const int SOE = 1)
   //Visual LED debugging
   delay(1000);
 
+  print_S(report, i);
+
   //Stop on error if required
   if(SOE == 1 && report.err_count > 0)
   {
@@ -130,6 +132,25 @@ err check_pin(cable C, const int i, const int SOE = 1)
   pinMode(HW_P[i], INPUT);
   delay(1);
   return report;
+}
+
+void print_S(err report, int current_in_pin)
+{
+  int i = 0;
+  Serial.print("Number of errors on in_pin ");
+  Serial.print(current_in_pin);
+  Serial.print(": ");
+  Serial.println(report.err_count);
+
+  while(i < report.err_count && i < MAX_ERRORS)
+  {
+    Serial.print(report.err_list[i][0]);
+    Serial.print(" ");
+    Serial.print(report.err_list[i][1]);
+    Serial.print(" ");
+    Serial.println(report.err_list[i][2]);
+    i++;
+  }
 }
 
 //Declare a cable variable and initialize it with data as described in the cable_template_format.txt file
@@ -234,25 +255,28 @@ void loop()
   int error_found = 0;
   for(int in_pin = 0; in_pin <= C.CI; in_pin++)
   {
-    err rep = check_pin(C, in_pin);
-    int i = 0;
-    Serial.print("Number of errors on in_pin ");
-    Serial.print(in_pin);
-    Serial.print(": ");
-    Serial.println(rep.err_count);
+    err rep = check_pin(C, in_pin, 0);
     if(rep.err_count > 0)
     {
       error_found = 1;
     }
-    while(i < rep.err_count && i < MAX_ERRORS)
-    {
-      Serial.print(rep.err_list[i][0]);
-      Serial.print(" ");
-      Serial.print(rep.err_list[i][1]);
-      Serial.print(" ");
-      Serial.println(rep.err_list[i][2]);
-      i++;
-    }
+//    int i = 0;
+//    Serial.print("Number of errors on in_pin ");
+//    Serial.print(in_pin);
+//    Serial.print(": ");
+//    Serial.println(rep.err_count);
+//    while(i < rep.err_count && i < MAX_ERRORS)
+//    {
+//      Serial.print(rep.err_list[i][0]);
+//      Serial.print(" ");
+//      Serial.print(rep.err_list[i][1]);
+//      Serial.print(" ");
+//      Serial.println(rep.err_list[i][2]);
+//      i++;
+//    }
+
+//    print_S(rep, in_pin);
+
   }
   if(error_found == 0)
   {
