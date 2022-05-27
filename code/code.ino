@@ -2,10 +2,14 @@
 #define MASTER_GOOD A14
 #define MASTER_ERROR A15
 #define BUTTON_NEXT A8
+#define BUTTON_RESET A9
 
 #define RED_BRIGHTNESS 70
 
 #include <SoftPWM.h>
+
+//Declare global variables
+int reset_happened = 0;
 
 // available pins in this array
 int HW_P[] = {2, 3, 4, 5, 6, 7, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, A0, A1, A2, A3, A4, A5, A6, A7};
@@ -112,13 +116,17 @@ err check_pin(cable C, const int i, const int SOE = 1)
   print_S(report, i);
 
   //Stop on error if required
-  if((SOE == 1 && report.err_count > 0) || 1)
+  if(SOE == 1 && report.err_count > 0)
   {
     delay(500); //Do not register previous long presses
     while(1)
     {
+      if(reset_happened == 0)
+      {
+        reset_happened = !digitalRead(BUTTON_RESET);
+      }
       char next = Serial.read();
-      if(digitalRead(BUTTON_NEXT) == 0 || next == 'c' || next == 'C')
+      if(digitalRead(BUTTON_NEXT) == 0 || next == 'c' || next == 'C' || reset_happened)
       {
         while(Serial.read() >= 0)
         {
@@ -249,14 +257,19 @@ void setup()
   digitalWrite(MASTER_GOOD, LOW);
 
   pinMode(BUTTON_NEXT, INPUT_PULLUP);
+  pinMode(BUTTON_RESET, INPUT_PULLUP);
 
   Serial.begin(9600);
 }
 
 void loop()
 {
+  reset_happened = 0;
+  
   Serial.println("##### BEGIN CABLE TESTING ... #####");
   int error_found = 0;
+
+  //Begin calling check algorithm
   for(int in_pin = 0; in_pin <= C.CI; in_pin++)
   {
     err rep = check_pin(C, in_pin);
@@ -264,44 +277,51 @@ void loop()
     {
       error_found = 1;
     }
-//    int i = 0;
-//    Serial.print("Number of errors on in_pin ");
-//    Serial.print(in_pin);
-//    Serial.print(": ");
-//    Serial.println(rep.err_count);
-//    while(i < rep.err_count && i < MAX_ERRORS)
-//    {
-//      Serial.print(rep.err_list[i][0]);
-//      Serial.print(" ");
-//      Serial.print(rep.err_list[i][1]);
-//      Serial.print(" ");
-//      Serial.println(rep.err_list[i][2]);
-//      i++;
-//    }
-
-//    print_S(rep, in_pin);
-
+    if(reset_happened)
+    {
+      break;
+    }
   }
-  if(error_found == 0)
+
+  
+  if(error_found == 0 && !reset_happened)
   {
     digitalWrite(MASTER_GOOD, HIGH);
+    Serial.println("##### CABLE TESTING DONE -> CABLE OK (send r or R for rerun ... #####");
+    Serial.println();
   }
-  Serial.println("##### CABLE TESTING DONE (send r or R for rerun ... #####");
-  Serial.println();
+  else
+  {
+    if(reset_happened)
+    {
+      Serial.println("!!!!! RESET BUTTON PRESSED. RESETING...");
+      Serial.println();
+    }
+    else
+    {
+      Serial.println("##### CABLE TESTING DONE -> ERRORS FOUND (send r or R for rerun ... #####");
+      Serial.println();
+    }
+  }
 
   while(true)
   {
+    if(reset_happened == 0)
+    {
+      reset_happened = !digitalRead(BUTTON_RESET);
+    }
     char Redo = Serial.read();
-    if(Redo == 'r' || Redo == 'R')
+    if(Redo == 'r' || Redo == 'R' || reset_happened)
     {
       while(Serial.read() >= 0)
       {
         ;
       }
-      digitalWrite(MASTER_GOOD, LOW);
-      //digitalWrite(MASTER_ERROR, LOW);
-      SoftPWMSet(MASTER_ERROR, 0);
       break;
     }
   }
+
+  digitalWrite(MASTER_GOOD, LOW);
+  //digitalWrite(MASTER_ERROR, LOW);
+  SoftPWMSet(MASTER_ERROR, 0);
 }
