@@ -39,7 +39,7 @@ struct err
 
 
     //Declare global variables
-int reset_happened = 0;
+int reset_happened = 1;
 LiquidCrystal_I2C lcd(0x27,20,4);  // set the LCD address to 0x27 for a 16 chars and 2 line display
 
 //Declare a cable variable and initialize it with data as described in the cable_template_format.txt file
@@ -139,9 +139,9 @@ err check_pin(cable C, const int i, const int SOE = 1)
       {
         //digitalWrite(MASTER_ERROR, HIGH);
         SoftPWMSet(MASTER_ERROR, RED_BRIGHTNESS);
-        report.err_list[report.err_count][0] = i;          //ID of faulty pin
-        report.err_list[report.err_count][1] = 1;          //error ID (in this case mismatch)
-        report.err_list[report.err_count][2] = j;  //destination pin
+        report.err_list[report.err_count][0] = i;           //ID of faulty pin
+        report.err_list[report.err_count][1] = 1;           //error ID (in this case mismatch)
+        report.err_list[report.err_count][2] = j;           //destination pin
         report.err_count ++;
       }
     }
@@ -154,6 +154,20 @@ err check_pin(cable C, const int i, const int SOE = 1)
   //Stop on error if required
   if(SOE == 1 && report.err_count > 0)
   {
+    //Print ONLY last error on screen
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print(F("IN_P:"));
+    lcd.print(report.err_list[report.err_count - 1][0]);
+    
+    lcd.setCursor(0, 1);
+    lcd.print(report.err_list[report.err_count - 1][0]);
+    lcd.print(F(" "));
+    lcd.print(report.err_list[report.err_count - 1][1]);
+    lcd.print(F(" "));
+    lcd.print(report.err_list[report.err_count - 1][2]);
+    lcd.print(F(" "));
+    
     delay(500); //Do not register previous long presses
     while(1)
     {
@@ -161,8 +175,10 @@ err check_pin(cable C, const int i, const int SOE = 1)
       {
         reset_happened = !digitalRead(BUTTON_RESET);
       }
-      char next = Serial.read();
-      if(digitalRead(BUTTON_NEXT) == 0 || next == 'c' || next == 'C' || reset_happened)
+
+      byte next = !digitalRead(BUTTON_NEXT);
+      char Next_S = Serial.read();
+      if(Next_S == 'c' || next == 'C' || next || reset_happened)
       {
         while(Serial.read() >= 0)
         {
@@ -194,10 +210,10 @@ void print_err_str_lcd(err *errors)
         if(errors->err_list[current_error][0] < 9)
         {
             lcd.print(errors->err_list[current_error][0]);
-            Serial.print("^^^");
-            Serial.print(errors->err_list[current_error][0]);
-            Serial.print("^^^");
             lcd.print(F(" "));
+//            Serial.print("^^^");
+//            Serial.print(errors->err_list[current_error][0]);
+//            Serial.print("^^^");
         }
         else
         {
@@ -270,6 +286,11 @@ void print_S(err report, int current_in_pin)
 
 void setup()
 {
+  Serial.begin(9600);
+  Serial.print(F("Cable Tester V1\n"));
+  Serial.print(F("Baldean & Meza\n"));
+  Serial.print(F("Booting up..."));
+  
   //Initializing the cable
   /*
   C.tot_pins = 4;
@@ -379,8 +400,6 @@ void setup()
   pinMode(BUTTON_RESET, INPUT_PULLUP);
   pinMode(BUTTON_OK, INPUT_PULLUP);
 
-  Serial.begin(9600);
-
   lcd.init();
   lcd.backlight();
   lcd.setCursor(0, 0);
@@ -390,7 +409,11 @@ void setup()
   delay(1200);
   lcd.clear();
 
-  Serial.print(digitalRead(BUTTON_OK));
+  Serial.print(F("Done"));
+  
+
+  //Default mode is fast
+  State.mode = 0;
 }
 
 void loop()
@@ -400,11 +423,8 @@ void loop()
     
   err master_error_list;
   master_error_list.err_count = 0;
-  
-  //Default mode is fast
-  State.mode = 0;
 
-  if(reset_happened == 0)   //Operator should choose a mode
+  if(reset_happened == 1)   //Operator should choose a mode
   {
     lcd.clear();
     lcd.setCursor(0, 0);
@@ -413,6 +433,14 @@ void loop()
     if(State.mode == 0)
     {
         lcd.print(F("Fast mode"));
+    }
+    if(State.mode == 1)
+    {
+        lcd.print(F("Stop on error"));
+    }
+    if(State.mode == 2)
+    {
+        lcd.print(F("Blind mode"));
     }
     while(digitalRead(BUTTON_OK) == 1)
     {
@@ -474,7 +502,8 @@ void loop()
     {
       error_found = 1;
       concat_errors(&master_error_list, &rep);
-      Serial.print(F("Concat_function_returned"));
+      //DEBUGGING
+      //Serial.print(F("Concat_function_returned"));
     }
     if(reset_happened)
     {
@@ -512,27 +541,65 @@ void loop()
     {
       Serial.println(F("##### CABLE TESTING DONE -> ERRORS FOUND (send r or R for rerun ... #####"));
       Serial.println();
-      print_err_str_lcd(&master_error_list);
       lcd.clear();
       lcd.setCursor(0, 0);
-      lcd.print(F("Errors found"));
+      lcd.print(F("ERRORS FOUND"));
       lcd.setCursor(0, 1);
-      lcd.print(F("Press RESET"));
+      lcd.print(F("Showing report"));
+      delay(700);
+      while(Serial.read() >= 0) //Empthy buffer
+      {
+        ;
+      }
+      while(1)
+      {
+        if(digitalRead(BUTTON_NEXT) == 0 || digitalRead(BUTTON_OK) == 0)
+        {
+          break;
+        }
+
+        char Redo_S = Serial.read();
+        if(Redo_S == 'c' || Redo_S == 'C')
+        {
+          while(Serial.read() >= 0) //Empthy buffer
+          {
+            ;
+          }
+          break;
+        }
+        
+      }
+      lcd.clear();
+      
+      print_err_str_lcd(&master_error_list);
+      
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print(F("Res: WIRE NOT ok"));
+      lcd.setCursor(0, 1);
+      lcd.print(F("Press RESET/NEXT"));
     }
   }
 
 
   //Waiting for input
+  byte redo = 0;
   while(true)
   {
+    if(digitalRead(BUTTON_OK) == 0)
+    {
+      redo = 1;
+    }
+    
     if(reset_happened == 0)
     {
       reset_happened = !digitalRead(BUTTON_RESET);
     }
-    char Redo = Serial.read();
-    if(Redo == 'r' || Redo == 'R' || reset_happened)
+    
+    char Redo_S = Serial.read();
+    if(Redo_S == 'r' || Redo_S == 'R' || redo || reset_happened)
     {
-      while(Serial.read() >= 0)
+      while(Serial.read() >= 0) //Empthy buffer
       {
         ;
       }
