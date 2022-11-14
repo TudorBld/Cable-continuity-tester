@@ -1,24 +1,92 @@
-#define MAX_ERRORS 10
-#define MASTER_GOOD A0
-#define MASTER_ERROR A1
-#define BUTTON_NEXT A2
-#define BUTTON_RESET A3
-#define BUTTON_OK 12
+#define MAX_ERRORS 10       //Max number of errors that can be stored in the list of errors
+#define MASTER_GOOD A0      //Master good LED port  (turns on when all test completed without errors)
+#define MASTER_ERROR A1     //Master error LED port (turns on on any error)
+#define BUTTON_NEXT A2      //"Next" Button Port
+#define BUTTON_RESET A3     //"Reset" Button Port
+#define BUTTON_OK 12        //"OK" Button Port
 
-#define RED_BRIGHTNESS 70
+#define RED_BRIGHTNESS 70   //Controls LED brightness
 
 #include <SoftPWM.h>        //by Brett Hagman
+//https://github.com/bhagman/SoftPWM  V1.0.1
 #include <LiquidCrystal_I2C.h>
+//https://github.com/johnrickman/LiquidCrystal_I2C  V1.1.2
 
 //STRUCTURES
-struct modes
+struct modes  //Contains all UI related to operation modes
 {
-    byte mode;    //1 fast, 2 stop on error, 3 blind
+    int mode;    //1 fast, 2 stop on error, 3 blind
+    char description[30]; //short description of the mode
+    int led_speed = 10;   //the delay time between consective checks
 };
 
 struct cable
 {
-  int tot_pins;     //Total number of pins
+  /*
+  # This is a description of the format used to save a wire template for a cable.
+
+## Definitions
+Cable = a collection of wires with a specific arrangement of the wires within.
+Wire = a connection between an input pin and one or more output pins.
+Input pin = a pin that is an output of the arduino board and is considered an input to a "pin" in the cable connector.
+Output pin = a pin that is an input of the arduino board and is considered the output of a "pin" in the cable connector.
+Pin ID = the unique number given to a pin from the cable. The ID-s start from 0. ID-s must be consecutive. The input pins have the lowest ID-s.
+Wire template = the correct arrangement of wires within a cable.
+
+This is a cable
+
+     ######################           ######################
+  ---|--------------------|-----------|--------------------|---
+  ---|--------------------|-----------|--------------------|---
+  ---|--------------------|-----------|--------------------|---
+     ######################           ######################
+
+Input pins     Input connector     Wires       Output connector     Output pins
+
+
+## The template is saved within a 2-dimensional array.
+We use a 2-dimensional array for input pins that connect to multiple output pins.
+
+T - the array whitch holds the template (The "golden sample" specifing the connections between the input pins and the output pins = the wire configuration in the cable)
+
+T[0] - 1-dimensional array with the id-s of the pins connected to the first input pin
+T[1] - 1-dimensional array with the id-s of the pins connected to the second input pin
+ ... 
+T[n] - 1-dimensional array with the id-s of the pins connected to the first n'th pin
+
+T[1][1] = k - k is the ID of the output pin connected to input pin 1.
+T[1][2] = m - m is the ID of the output pin connected to input pin 1. // For input pins with multiple output pins
+
+After the last pin int in the row, a special value is added to mark the end of the row. This special value is -1.
+
+## EXAMPLE
+
+      ######################           ######################
+  0---|--------------------|-----------|--------------------|---3
+  1---|--------------------|-----------|--------------------|---4
+  2---|--------------------|-----------|--------------------|---5
+      ######################           ######################
+
+The array is:
+T[0] : 3 -1
+T[1] : 4 -1
+T[2] : 5 -1
+
+## EXAMPLE 2
+                                                  ######################
+      ######################     |----------|--------------------|---3
+  0---|--------------------|-----|----------|--------------------|---4
+  1---|--------------------|----------------|--------------------|---5
+  2---|--------------------|----------------|--------------------|---6
+      ######################                ######################
+
+The array is:
+T[0] : 3 4 -1
+T[1] : 5 -1
+T[2] : 6 -1
+*/
+
+  int tot_pins;     //Total number of pins on the cable
   int CI = -1;      //Last sequential pin number of INPUT CONNECTOR
   int CO_1 = -1;    //Last sequential pin number of OUTPUT CONNECTOR 1
   int CO_2 = -1;    //Last sequential pin number of OUTPUT CONNECTOR 2
@@ -30,16 +98,14 @@ struct cable
 struct err
 {
   int err_count = 0;
-  //int open_c = 0;
-  //int X = 0;
-  //int Y = 0;
-  //int short_c = 0;
-  int err_list[MAX_ERRORS][3];
+  int err_list[MAX_ERRORS][3];  //Containes [][0] ID of originating pin
+                                //          [][1] error type  (0 - lack of continuity | 1 - mismatch (wrong destination pin) | 3 - short circuit (destination pin is an input pin))
+                                //          [][2] ID of correct destination pin
 };
 
 
-    //Declare global variables
-int reset_happened = 1;
+//Declare global variables
+int reset_happened = 0;
 LiquidCrystal_I2C lcd(0x27,20,4);  // set the LCD address to 0x27 for a 16 chars and 2 line display
 
 //Declare a cable variable and initialize it with data as described in the cable_template_format.txt file
@@ -47,6 +113,7 @@ cable C;
 //Declare a modes variable for user interface info
 modes State;
 
+//Read from csv!
 // available pins in this array
 //int HW_P[] = {2, 3, 4, 5, 6, 7, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, A0, A1, A2, A3, A4, A5, A6, A7};
 ////            0  1  2  3  4  5  6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38  39  40  41  41  42  43  44
@@ -54,10 +121,14 @@ modes State;
 //For arduino nano
 int HW_P[] = {2, 3, 5, 6, 7, 8, 9, 10, 11};
 //            0  1  2  3  4  5  6  7   8   9   10  11
+//See how to read from csv file
 
 
 void concat_errors(err *master, err *addition)
 {
+    //Concatenates errors from 1 pin to the list of errors of the cable
+    //master - the list of errors of the cable
+    //addition - the list of errors of the current (input)pin/wire
     int r = master->err_count;
     master->err_count += addition->err_count;
 
@@ -71,58 +142,85 @@ void concat_errors(err *master, err *addition)
     }
 }
 
-err check_pin(cable C, const int i, const int SOE = 1)
+err check_pin(cable C, const int i, const modes OP_mode)
 {
+  //Checks the (input)pin from the cable
+  //C - The wiring configutration of the cable under test
+  //i - The (input)pin that needs to be checked
+  //OP_mode - The operation mode
+  //err - The returned list of errors
+  
   //TO DO
   //Check if i belongs to the input connector
   err report;
   report.err_count = 0;
 
   //Make sure MASTER_GOOD LED is NOT on when testing
-  //digitalWrite(MASTER_GOOD, LOW);
   SoftPWMSet(MASTER_GOOD, 0);
 
   pinMode(HW_P[i], OUTPUT);
   digitalWrite(HW_P[i], HIGH);
-  delay(10);  //Wait for some capacitor to charge?
+  delay(10);  //Wait to settle
 
   int j = 0;
-  while(C.T[i][j] != -1)  //Check correct wires
+  while(C.T[i][j] != -1)  //Check for (correct) conectivity
   {
     if(digitalRead(HW_P[C.T[i][j]]) == LOW)
     {
       if(report.err_count < MAX_ERRORS)
       {
-        //digitalWrite(MASTER_ERROR, HIGH);
         SoftPWMSet(MASTER_ERROR, RED_BRIGHTNESS);
         report.err_list[report.err_count][0] = i;          //ID of faulty pin
         report.err_list[report.err_count][1] = 0;          //error ID (in this case open circuit)
         report.err_list[report.err_count][2] = C.T[i][j];  //destination pin
         report.err_count ++;
+
+        if(OP_mode.mode == 2)
+        {
+          //wait for input from the operator
+          delay(500); //Do not register previous long presses
+          while(1)
+          {
+            if(reset_happened == 0)
+            {
+              reset_happened = !digitalRead(BUTTON_RESET);
+            }
+            char next = Serial.read();
+            if(digitalRead(BUTTON_NEXT) == 0 || next == 'c' || next == 'C' || reset_happened)
+            {
+              while(Serial.read() >= 0)
+              {
+                ; //Empty Serial buffer
+              }
+              break;  //exit infinite loop
+            }
+          }
+        }
+
       }
     }
     j++;
   }
   
-  for(j = 0; j < C.tot_pins; j++)   //Check the rest of the wires
+  for(j = 0; j < C.tot_pins; j++)   //Check for mismatch or shorts
   {
-    //Only check incorrect wires (correct ones have already been tested)
-    int incorrect = 1;
+    //Only check wires that have not been allready tested
+    int not_tested = 1;
     int k = 0;
     while(C.T[i][k] != -1)  //go trough the current template line
     {
       if (j == C.T[i][k])
       {
-        incorrect = 0;
+        not_tested = 0;
       }
       k++;
     }
     if(j == i)
     {
-      incorrect = 0;
+      not_tested = 0;
     }
 
-    if(incorrect == 1)   //Checking wires that are incorrect
+    if(not_tested == 1)   //Checking wires that are not_tested
     {
       //check for short-circuit errors
       if(j <= C.CI && digitalRead(HW_P[j]) == HIGH && i < j)
@@ -139,35 +237,21 @@ err check_pin(cable C, const int i, const int SOE = 1)
       {
         //digitalWrite(MASTER_ERROR, HIGH);
         SoftPWMSet(MASTER_ERROR, RED_BRIGHTNESS);
-        report.err_list[report.err_count][0] = i;           //ID of faulty pin
-        report.err_list[report.err_count][1] = 1;           //error ID (in this case mismatch)
-        report.err_list[report.err_count][2] = j;           //destination pin
+        report.err_list[report.err_count][0] = i;          //ID of faulty pin
+        report.err_list[report.err_count][1] = 1;          //error ID (in this case mismatch)
+        report.err_list[report.err_count][2] = j;  //destination pin
         report.err_count ++;
       }
     }
   }
-  //Visual LED debugging
-  delay(1);
+  delay(OP_mode.led_speed);
 
-  print_S(report, i);
+  //Prints errors to arduino serial interface
+  print_S(report);
 
-  //Stop on error if required
-  if(SOE == 1 && report.err_count > 0)
+  //Stop on error mode
+  if(OP_mode.mode == 2 && report.err_count > 0)
   {
-    //Print ONLY last error on screen
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print(F("IN_P:"));
-    lcd.print(report.err_list[report.err_count - 1][0]);
-    
-    lcd.setCursor(0, 1);
-    lcd.print(report.err_list[report.err_count - 1][0]);
-    lcd.print(F(" "));
-    lcd.print(report.err_list[report.err_count - 1][1]);
-    lcd.print(F(" "));
-    lcd.print(report.err_list[report.err_count - 1][2]);
-    lcd.print(F(" "));
-    
     delay(500); //Do not register previous long presses
     while(1)
     {
@@ -175,10 +259,8 @@ err check_pin(cable C, const int i, const int SOE = 1)
       {
         reset_happened = !digitalRead(BUTTON_RESET);
       }
-
-      byte next = !digitalRead(BUTTON_NEXT);
-      char Next_S = Serial.read();
-      if(Next_S == 'c' || next == 'C' || next || reset_happened)
+      char next = Serial.read();
+      if(digitalRead(BUTTON_NEXT) == 0 || next == 'c' || next == 'C' || reset_happened)
       {
         while(Serial.read() >= 0)
         {
@@ -198,6 +280,7 @@ err check_pin(cable C, const int i, const int SOE = 1)
 
 void print_err_str_lcd(err *errors)
 {
+    //writes the list of errors on the LCD
     for(int current_error = 0; current_error < errors->err_count; current_error++)
     {
         //Set a HIGH signal on current faulty pin
@@ -210,10 +293,10 @@ void print_err_str_lcd(err *errors)
         if(errors->err_list[current_error][0] < 9)
         {
             lcd.print(errors->err_list[current_error][0]);
+            Serial.print("^^^");
+            Serial.print(errors->err_list[current_error][0]);
+            Serial.print("^^^");
             lcd.print(F(" "));
-//            Serial.print("^^^");
-//            Serial.print(errors->err_list[current_error][0]);
-//            Serial.print("^^^");
         }
         else
         {
@@ -263,22 +346,26 @@ void print_err_str_lcd(err *errors)
     }
 }
 
-void print_S(err report, int current_in_pin)
+void print_S(err report)
 {
-  int i = 0;
-  Serial.print(F("Number of errors on in_pin "));
-  Serial.print(current_in_pin);
-  Serial.print(F(": "));
-  Serial.println(report.err_count);
-
-  while(i < report.err_count && i < MAX_ERRORS)
+  //Prints the error report on the arduino serial interface
+  if(report.err_count != 0)
   {
+    int i = 0;
+    Serial.print(F("Number of errors on in_pin "));
     Serial.print(report.err_list[i][0]);
-    Serial.print(F(" "));
-    Serial.print(report.err_list[i][1]);
-    Serial.print(F(" "));
-    Serial.println(report.err_list[i][2]);
-    i++;
+    Serial.print(F(": "));
+    Serial.println(report.err_count);
+  
+    while(i < report.err_count && i < MAX_ERRORS)
+    {
+      Serial.print(report.err_list[i][0]);
+      Serial.print(F(" "));
+      Serial.print(report.err_list[i][1]);
+      Serial.print(F(" "));
+      Serial.println(report.err_list[i][2]);
+      i++;
+    }
   }
 }
 
@@ -286,11 +373,6 @@ void print_S(err report, int current_in_pin)
 
 void setup()
 {
-  Serial.begin(9600);
-  Serial.print(F("Cable Tester V1\n"));
-  Serial.print(F("Baldean & Meza\n"));
-  Serial.print(F("Booting up..."));
-  
   //Initializing the cable
   /*
   C.tot_pins = 4;
@@ -400,6 +482,8 @@ void setup()
   pinMode(BUTTON_RESET, INPUT_PULLUP);
   pinMode(BUTTON_OK, INPUT_PULLUP);
 
+  Serial.begin(9600);
+
   lcd.init();
   lcd.backlight();
   lcd.setCursor(0, 0);
@@ -409,11 +493,7 @@ void setup()
   delay(1200);
   lcd.clear();
 
-  Serial.print(F("Done"));
-  
-
-  //Default mode is fast
-  State.mode = 0;
+  Serial.print(digitalRead(BUTTON_OK));
 }
 
 void loop()
@@ -423,8 +503,11 @@ void loop()
     
   err master_error_list;
   master_error_list.err_count = 0;
+  
+  //Default mode is fast
+  State.mode = 0;
 
-  if(reset_happened == 1)   //Operator should choose a mode
+  if(reset_happened == 0)   //Operator should choose a mode
   {
     lcd.clear();
     lcd.setCursor(0, 0);
@@ -433,14 +516,6 @@ void loop()
     if(State.mode == 0)
     {
         lcd.print(F("Fast mode"));
-    }
-    if(State.mode == 1)
-    {
-        lcd.print(F("Stop on error"));
-    }
-    if(State.mode == 2)
-    {
-        lcd.print(F("Blind mode"));
     }
     while(digitalRead(BUTTON_OK) == 1)
     {
@@ -491,7 +566,7 @@ void loop()
     err rep;
     if(State.mode == 0)
     {
-        rep = check_pin(C, in_pin, 0);
+        rep = check_pin(C, in_pin, State);
     }
     else
     {
@@ -502,8 +577,7 @@ void loop()
     {
       error_found = 1;
       concat_errors(&master_error_list, &rep);
-      //DEBUGGING
-      //Serial.print(F("Concat_function_returned"));
+      Serial.print(F("Concat_function_returned"));
     }
     if(reset_happened)
     {
@@ -541,65 +615,27 @@ void loop()
     {
       Serial.println(F("##### CABLE TESTING DONE -> ERRORS FOUND (send r or R for rerun ... #####"));
       Serial.println();
-      lcd.clear();
-      lcd.setCursor(0, 0);
-      lcd.print(F("ERRORS FOUND"));
-      lcd.setCursor(0, 1);
-      lcd.print(F("Showing report"));
-      delay(700);
-      while(Serial.read() >= 0) //Empthy buffer
-      {
-        ;
-      }
-      while(1)
-      {
-        if(digitalRead(BUTTON_NEXT) == 0 || digitalRead(BUTTON_OK) == 0)
-        {
-          break;
-        }
-
-        char Redo_S = Serial.read();
-        if(Redo_S == 'c' || Redo_S == 'C')
-        {
-          while(Serial.read() >= 0) //Empthy buffer
-          {
-            ;
-          }
-          break;
-        }
-        
-      }
-      lcd.clear();
-      
       print_err_str_lcd(&master_error_list);
-      
       lcd.clear();
       lcd.setCursor(0, 0);
-      lcd.print(F("Res: WIRE NOT ok"));
+      lcd.print(F("Errors found"));
       lcd.setCursor(0, 1);
-      lcd.print(F("Press RESET/NEXT"));
+      lcd.print(F("Press RESET"));
     }
   }
 
 
   //Waiting for input
-  byte redo = 0;
   while(true)
   {
-    if(digitalRead(BUTTON_OK) == 0)
-    {
-      redo = 1;
-    }
-    
     if(reset_happened == 0)
     {
       reset_happened = !digitalRead(BUTTON_RESET);
     }
-    
-    char Redo_S = Serial.read();
-    if(Redo_S == 'r' || Redo_S == 'R' || redo || reset_happened)
+    char Redo = Serial.read();
+    if(Redo == 'r' || Redo == 'R' || reset_happened)
     {
-      while(Serial.read() >= 0) //Empthy buffer
+      while(Serial.read() >= 0)
       {
         ;
       }
