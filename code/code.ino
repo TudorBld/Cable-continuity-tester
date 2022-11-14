@@ -4,7 +4,7 @@
 #define BUTTON_NEXT A8
 #define BUTTON_RESET A9
 
-#define RED_BRIGHTNESS 70
+#define RED_BRIGHTNESS 200
 
 #include <SoftPWM.h>        //by Brett Hagman
 #include <LiquidCrystal_I2C.h>
