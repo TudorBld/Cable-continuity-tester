@@ -1,11 +1,12 @@
 #define MAX_ERRORS 10       //Max number of errors that can be stored in the list of errors
-#define MASTER_GOOD A0      //Master good LED port  (turns on when all test completed without errors)
-#define MASTER_ERROR A1     //Master error LED port (turns on on any error)
-#define BUTTON_NEXT A2      //"Next" Button Port
-#define BUTTON_RESET A3     //"Reset" Button Port
-#define BUTTON_OK 12        //"OK" Button Port
+#define MASTER_GOOD A14     //Master good LED port  (turns on when all test completed without errors)
+#define MASTER_ERROR A15    //Master error LED port (turns on on any error)
+#define BUTTON_NEXT A8      //"Next" Button Port
+#define BUTTON_RESET A9     //"Reset" Button Port
+#define BUTTON_OK A10       //"OK" Button Port
 
-#define RED_BRIGHTNESS 70   //Controls LED brightness
+#define RED_BRIGHTNESS 150   //Controls LED brightness
+#define GREEN_BRIGHTNESS 10   //Controls LED brightness
 
 #include <SoftPWM.h>        //by Brett Hagman
 //https://github.com/bhagman/SoftPWM  V1.0.1
@@ -103,23 +104,30 @@ struct err
                                 //          [][2] ID of correct destination pin
 };
 
+struct hardware_model
+{
+  //Containes a description of present hardware options
+  bool lcd; //true if LCD present
+  int board;//:0 - arduino mega, 1 - arduino uno, ...
+};
 
 //Declare global variables
-int reset_happened = 0;
+int reset_happened = 1;
 LiquidCrystal_I2C lcd(0x27,20,4);  // set the LCD address to 0x27 for a 16 chars and 2 line display
 
 //Declare a cable variable and initialize it with data as described in the cable_template_format.txt file
 cable C;
 //Declare a modes variable for user interface info
 modes State;
+//Declare a hardware_model configuration
+hardware_model Hardware;
 
-//Read from csv!
 // available pins in this array
-//int HW_P[] = {2, 3, 4, 5, 6, 7, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, A0, A1, A2, A3, A4, A5, A6, A7};
-////            0  1  2  3  4  5  6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38  39  40  41  41  42  43  44
+int HW_P[] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53};
+////          0  1  2  3  4  5  6  7   8   9  10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38  39  40  41  41  42
 
 //For arduino nano
-int HW_P[] = {2, 3, 5, 6, 7, 8, 9, 10, 11};
+//int HW_P[] = {2, 3, 5, 6, 7, 8, 9, 10, 11};
 //            0  1  2  3  4  5  6  7   8   9   10  11
 //See how to read from csv file
 
@@ -174,28 +182,6 @@ err check_pin(cable C, const int i, const modes OP_mode)
         report.err_list[report.err_count][1] = 0;          //error ID (in this case open circuit)
         report.err_list[report.err_count][2] = C.T[i][j];  //destination pin
         report.err_count ++;
-
-        if(OP_mode.mode == 2)
-        {
-          //wait for input from the operator
-          delay(500); //Do not register previous long presses
-          while(1)
-          {
-            if(reset_happened == 0)
-            {
-              reset_happened = !digitalRead(BUTTON_RESET);
-            }
-            char next = Serial.read();
-            if(digitalRead(BUTTON_NEXT) == 0 || next == 'c' || next == 'C' || reset_happened)
-            {
-              while(Serial.read() >= 0)
-              {
-                ; //Empty Serial buffer
-              }
-              break;  //exit infinite loop
-            }
-          }
-        }
 
       }
     }
@@ -391,7 +377,7 @@ void setup()
 
   //complicated test cable
   {
-  /*
+  ///*
   C.CI = 14;
   C.CO_1 = 21;
   C.CO_2 = 28;
@@ -456,10 +442,11 @@ void setup()
   C.T[14][0] = 26;
   C.T[14][1] = 43;
   C.T[14][2] = -1;
-  */
+  //*/
   }
 
   //Arduino Nano test cable
+  /*
   C.tot_pins = 4;
   C.CI = 1;
   C.CO_1 = 3;
@@ -471,12 +458,16 @@ void setup()
 
   C.T[1][0] = 3;
   C.T[1][1] = -1;
+  */
+
+  //Used hardware configuration
+  Hardware.lcd = false;
+  Hardware.board = 0;
+  
   
   SoftPWMBegin();
   SoftPWMSet(MASTER_ERROR, 0);
   SoftPWMSet(MASTER_GOOD, 0);
-  //pinMode(MASTER_GOOD, OUTPUT);
-  //digitalWrite(MASTER_GOOD, LOW);
 
   pinMode(BUTTON_NEXT, INPUT_PULLUP);
   pinMode(BUTTON_RESET, INPUT_PULLUP);
@@ -484,14 +475,20 @@ void setup()
 
   Serial.begin(9600);
 
-  lcd.init();
-  lcd.backlight();
-  lcd.setCursor(0, 0);
-  lcd.print(F("Cable Tester V1"));
-  lcd.setCursor(0, 1);
-  lcd.print(F("Baldean & Meza"));
-  delay(1200);
-  lcd.clear();
+  //Default mode is fast
+  State.mode = 1;
+
+  if(Hardware.lcd == true)
+  {
+    lcd.init();
+    lcd.backlight();
+    lcd.setCursor(0, 0);
+    lcd.print(F("Cable Tester V1"));
+    lcd.setCursor(0, 1);
+    lcd.print(F("Baldean"));
+    delay(1200);
+    lcd.clear();
+  }
 
   Serial.print(digitalRead(BUTTON_OK));
 }
@@ -503,56 +500,137 @@ void loop()
     
   err master_error_list;
   master_error_list.err_count = 0;
-  
-  //Default mode is fast
-  State.mode = 0;
 
-  if(reset_happened == 0)   //Operator should choose a mode
+  if(reset_happened == 1)   //Operator should choose a mode
   {
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print(F("Choose a mode:"));
-    lcd.setCursor(0, 1);
-    if(State.mode == 0)
+    digitalWrite(HW_P[0], LOW);
+    digitalWrite(HW_P[1], LOW);
+    digitalWrite(HW_P[2], LOW);
+    SoftPWMSet(MASTER_ERROR, RED_BRIGHTNESS);
+    SoftPWMSet(MASTER_GOOD, GREEN_BRIGHTNESS);
+    
+    if(Hardware.lcd == true)
     {
-        lcd.print(F("Fast mode"));
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print(F("Choose a mode:"));
+      lcd.setCursor(0, 1);
+    }
+    Serial.print(F("\nChoose a mode:\n"));
+    
+    if(State.mode == 1)
+    {
+        if(Hardware.lcd == true) lcd.print(F("Fast mode"));
+        Serial.print(F("Fast mode\n"));
+
+        pinMode(HW_P[0], OUTPUT);
+        pinMode(HW_P[1], INPUT);
+        pinMode(HW_P[2], INPUT);
+        digitalWrite(HW_P[0], HIGH);
+        digitalWrite(HW_P[1], LOW);
+        digitalWrite(HW_P[2], LOW);
+    }
+    if(State.mode == 2)
+    {
+        if(Hardware.lcd == true) lcd.print(F("Stop on error"));
+        Serial.print(F("Stop on error\n"));
+
+        pinMode(HW_P[0], INPUT);
+        pinMode(HW_P[1], OUTPUT);
+        pinMode(HW_P[2], INPUT);
+        digitalWrite(HW_P[0], LOW);
+        digitalWrite(HW_P[1], HIGH);
+        digitalWrite(HW_P[2], LOW);
+    }
+    if(State.mode == 3)
+    {
+        if(Hardware.lcd == true) lcd.print(F("blind"));
+        Serial.print(F("blind\n"));
+
+        pinMode(HW_P[0], INPUT);
+        pinMode(HW_P[1], INPUT);
+        pinMode(HW_P[2], OUTPUT);
+        digitalWrite(HW_P[0], LOW);
+        digitalWrite(HW_P[1], LOW);
+        digitalWrite(HW_P[2], HIGH);
     }
     while(digitalRead(BUTTON_OK) == 1)
     {
         if(digitalRead(BUTTON_NEXT) == 0)
         {
             State.mode++;
-            if(State.mode == 3)
+            if(State.mode == 4)
             {
-                State.mode = 0;
+                State.mode = 1;
             }
             switch(State.mode)
             {
-                case 0:
-                    lcd.setCursor(0, 1);
-                    lcd.print(F("                "));
-                    lcd.setCursor(0, 1);
-                    lcd.print(F("Fast mode"));
-                    break;
                 case 1:
-                    lcd.setCursor(0, 1);
-                    lcd.print(F("                "));
-                    lcd.setCursor(0, 1);
-                    lcd.print(F("Stop on error"));
+                    State.mode = 1;
+                    if(Hardware.lcd == true)
+                    {
+                        lcd.setCursor(0, 1);
+                        lcd.print(F("                "));
+                        lcd.setCursor(0, 1);
+                        lcd.print(F("Fast mode"));
+                    }
+                    Serial.print(F("Fast mode\n"));
+                    pinMode(HW_P[0], OUTPUT);
+                    pinMode(HW_P[1], INPUT);
+                    pinMode(HW_P[2], INPUT);
+                    digitalWrite(HW_P[0], HIGH);
+                    digitalWrite(HW_P[1], LOW);
+                    digitalWrite(HW_P[2], LOW);
                     break;
                 case 2:
+                  State.mode = 2;
+                  if(Hardware.lcd == true)
+                  {
+                        lcd.setCursor(0, 1);
+                        lcd.print(F("                "));
+                        lcd.setCursor(0, 1);
+                        lcd.print(F("Stop on error"));
+                  }
+                  Serial.print(F("Stop on error\n"));
+                  pinMode(HW_P[0], INPUT);
+                  pinMode(HW_P[1], OUTPUT);
+                  pinMode(HW_P[2], INPUT);
+                  digitalWrite(HW_P[0], LOW);
+                  digitalWrite(HW_P[1], HIGH);
+                  digitalWrite(HW_P[2], LOW);
+                    break;
+                case 3:
+                  State.mode = 3;
+                  if(Hardware.lcd == true)
+                  {
                     lcd.setCursor(0, 1);
                     lcd.print(F("                "));
                     lcd.setCursor(0, 1);
                     lcd.print(F("Blind mode"));
-                    break;
+                  }
+                  Serial.print(F("Blind mode\n"));
+                  pinMode(HW_P[0], INPUT);
+                  pinMode(HW_P[1], INPUT);
+                  pinMode(HW_P[2], OUTPUT);
+                  digitalWrite(HW_P[0], LOW);
+                  digitalWrite(HW_P[1], LOW);
+                  digitalWrite(HW_P[2], HIGH);
+                  break;
             }
             delay(700);
         }
     }
+    pinMode(HW_P[0], INPUT);
+    pinMode(HW_P[1], INPUT);
+    pinMode(HW_P[2], INPUT);
+    digitalWrite(HW_P[0], LOW);
+    digitalWrite(HW_P[1], LOW);
+    digitalWrite(HW_P[2], LOW);
+    SoftPWMSet(MASTER_ERROR, 0);
+    SoftPWMSet(MASTER_GOOD, 0);
   }
 
-  lcd.clear();
+  if(Hardware.lcd == true) lcd.clear();
   reset_happened = 0;
 
   
@@ -564,14 +642,7 @@ void loop()
   {
     //check pin
     err rep;
-    if(State.mode == 0)
-    {
-        rep = check_pin(C, in_pin, State);
-    }
-    else
-    {
-        rep = check_pin(C, in_pin, 1);
-    }
+    rep = check_pin(C, in_pin, State);
     
     if(rep.err_count > 0)
     {
@@ -589,12 +660,15 @@ void loop()
   if(error_found == 0 && !reset_happened)
   {
 //    digitalWrite(MASTER_GOOD, HIGH);
-    SoftPWMSet(MASTER_GOOD, 5);
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print(F("WIRE OK"));
-    lcd.setCursor(0, 1);
-    lcd.print(F("Press RESET"));
+    SoftPWMSet(MASTER_GOOD, GREEN_BRIGHTNESS);
+    if(Hardware.lcd == true)
+    {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print(F("WIRE OK"));
+      lcd.setCursor(0, 1);
+      lcd.print(F("Press RESET"));
+    }
     Serial.println(F("##### CABLE TESTING DONE -> CABLE OK (send r or R for rerun ... #####"));
     Serial.println();
   }
@@ -602,11 +676,14 @@ void loop()
   {
     if(reset_happened)
     {
+      if(Hardware.lcd == true)
+      {
         lcd.clear();
         lcd.setCursor(0, 0);
         lcd.print(F("Reset pressed"));
         lcd.setCursor(0, 1);
         lcd.print(F("Resetting..."));
+      }
       Serial.println(F("!!!!! RESET BUTTON PRESSED. RESETING..."));
       Serial.println();
       delay(600);
@@ -615,12 +692,16 @@ void loop()
     {
       Serial.println(F("##### CABLE TESTING DONE -> ERRORS FOUND (send r or R for rerun ... #####"));
       Serial.println();
-      print_err_str_lcd(&master_error_list);
-      lcd.clear();
-      lcd.setCursor(0, 0);
-      lcd.print(F("Errors found"));
-      lcd.setCursor(0, 1);
-      lcd.print(F("Press RESET"));
+      
+      if(Hardware.lcd == true)
+      {
+          print_err_str_lcd(&master_error_list);
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print(F("Errors found"));
+          lcd.setCursor(0, 1);
+          lcd.print(F("Press RESET"));
+      }
     }
   }
 
@@ -633,7 +714,7 @@ void loop()
       reset_happened = !digitalRead(BUTTON_RESET);
     }
     char Redo = Serial.read();
-    if(Redo == 'r' || Redo == 'R' || reset_happened)
+    if(Redo == 'r' || Redo == 'R' || reset_happened || digitalRead(BUTTON_OK) == 0)
     {
       while(Serial.read() >= 0)
       {
