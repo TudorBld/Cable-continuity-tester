@@ -4,6 +4,7 @@
 #define BUTTON_NEXT A8      //"Next" Button Port
 #define BUTTON_RESET A9     //"Reset" Button Port
 #define BUTTON_OK A10       //"OK" Button Port
+#define POT_LED_SPEED A11   //Port for the led speed controll potentiometer
 
 #define RED_BRIGHTNESS 150   //Controls LED brightness
 #define GREEN_BRIGHTNESS 10   //Controls LED brightness
@@ -503,6 +504,9 @@ void loop()
 
   if(reset_happened == 1)   //Operator should choose a mode
   {
+    unsigned long int last_time = millis();
+    unsigned long int last_blink = millis();
+    
     digitalWrite(HW_P[0], LOW);
     digitalWrite(HW_P[1], LOW);
     digitalWrite(HW_P[2], LOW);
@@ -554,9 +558,12 @@ void loop()
         digitalWrite(HW_P[1], LOW);
         digitalWrite(HW_P[2], HIGH);
     }
+
+    int i = 29; //Incrementing variable for displaying led speed
     while(digitalRead(BUTTON_OK) == 1)
     {
-        if(digitalRead(BUTTON_NEXT) == 0)
+        //Reading "Next" button presses
+        if(digitalRead(BUTTON_NEXT) == 0 && millis() - last_time > 700)
         {
             State.mode++;
             if(State.mode == 4)
@@ -617,9 +624,27 @@ void loop()
                   digitalWrite(HW_P[2], HIGH);
                   break;
             }
-            delay(700);
+            last_time = millis();
         }
+
+        //Reading Led speed potentiometer
+        State.led_speed = map(0, 255, 50, 200, analogRead(POT_LED_SPEED));
+        //for(int i = 29, i < 44, i++)
+        if(millis() - last_blink > State.led_speed)
+        {
+            pinMode(HW_P[i], INPUT);
+            digitalWrite(HW_P[i], LOW);
+            i++;
+            if(i >= 44) i = 29;
+            digitalWrite(HW_P[i], HIGH);
+            pinMode(HW_P[i], OUTPUT);
+            last_blink = millis();
+        }
+        
     }
+    pinMode(HW_P[i], INPUT);
+    digitalWrite(HW_P[i], LOW);
+    
     pinMode(HW_P[0], INPUT);
     pinMode(HW_P[1], INPUT);
     pinMode(HW_P[2], INPUT);
