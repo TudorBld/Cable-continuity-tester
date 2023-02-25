@@ -125,11 +125,11 @@ hardware_model Hardware;
 
 // available pins in this array
 int HW_P[] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53};
-////          0  1  2  3  4  5  6  7   8   9  10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38  39  40  41  41  42
+////          0  1  2  3  4  5  6  7   8   9  10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38  39  40  41  42  43
 
 //For arduino nano
 //int HW_P[] = {2, 3, 5, 6, 7, 8, 9, 10, 11};
-//            0  1  2  3  4  5  6  7   8   9   10  11
+//              0  1  2  3  4  5  6  7   8   9   10  11
 //See how to read from csv file
 
 
@@ -357,6 +357,86 @@ void print_S(err report)
 }
 
 
+void save_golden_standard()
+{
+    Serial.println(F("Begin golden sample reading..."));
+    char max_id = 0;
+    if(Hardware.board == 0)
+        max_id = 43;
+    else if(Hardware.board == 1)
+        max_id = 8;
+    else max_id = 8;
+
+    //Set all pins to input low
+    for(int i = 0; i <= max_id; i++)
+    {
+        pinMode(HW_P[i], INPUT);
+        digitalWrite(HW_P[i], LOW);
+    }
+    //turn master good and master error leds off
+    SoftPWMSet(MASTER_GOOD, 0);
+    SoftPWMSet(MASTER_ERROR, 0);
+        
+    char max_input_connector_id = 0;
+    char min_output_connector_id = max_id;
+    char max_used_id = 0;
+
+    for(int i = 0; i <= max_id && max_input_connector_id == 0; i++)
+    {
+        digitalWrite(HW_P[i], HIGH);
+        pinMode(HW_P[i], OUTPUT);
+        delay(1);    //maybe wait for residual capacitances to charge
+        int recipients_found = 0;
+        for(int j = 0; j <= max_id; j++)
+        {
+            if(j != i)  //jump over current pin
+            {
+                if(digitalRead(HW_P[j]) == 1)
+                {
+                    C.T[i][recipients_found] = j;
+                    recipients_found++;
+                    if(j < min_output_connector_id)
+                        min_output_connector_id = j;
+                    if(j > max_used_id)
+                        max_used_id = j;
+
+                    Serial.print(i);
+                    Serial.print(F(" "));
+                    Serial.println(j);
+                }
+            }
+        }
+        //end recipient sequence
+        C.T[i][recipients_found] = -1;
+        
+        //Conditions for end of input connector
+        if(recipients_found == 0)
+            max_input_connector_id = i - 1;
+        if(max_input_connector_id == -1)
+            max_input_connector_id = 0;
+        if(i == min_output_connector_id)
+            max_input_connector_id = i - 1;
+
+        delay(State.led_speed);
+        pinMode(HW_P[i], INPUT);
+        digitalWrite(HW_P[i], LOW);
+    }
+    C.CI = max_input_connector_id;
+    C.CO_1 = max_used_id;
+    C.CO_2 = max_used_id;
+    C.CO_3 = max_used_id;
+    C.tot_pins = max_used_id + 1;
+
+    //in case there is no cable connected while sampling golden standard
+    if(C.tot_pins == 1)
+        C.T[0][0] = -1;
+
+    //turn master good and master error leds back on
+    SoftPWMSet(MASTER_GOOD, GREEN_BRIGHTNESS);
+    SoftPWMSet(MASTER_ERROR, RED_BRIGHTNESS);
+    Serial.println(F("Cable saved as Golden Sample"));
+}
+
 
 void setup()
 {
@@ -571,8 +651,8 @@ void loop()
     }
     if(State.mode == 3)
     {
-        if(Hardware.lcd == true) lcd.print(F("blind"));
-        Serial.print(F("blind\n"));
+        if(Hardware.lcd == true) lcd.print(F("Save as GS"));
+        Serial.print(F("Save as Golden Sample\n"));
 
         pinMode(HW_P[0], INPUT);
         pinMode(HW_P[1], INPUT);
@@ -583,7 +663,8 @@ void loop()
     }
 
     int i = 29; //Incrementing variable for displaying led speed
-    while(digitalRead(BUTTON_OK) == 1)
+    int wait = 0;
+    while(digitalRead(BUTTON_OK) || wait == 1)
     {
         //Reading "Next" button presses
         if(digitalRead(BUTTON_NEXT) == 0 && millis() - last_time > 700)
@@ -636,9 +717,9 @@ void loop()
                     lcd.setCursor(0, 1);
                     lcd.print(F("                "));
                     lcd.setCursor(0, 1);
-                    lcd.print(F("Blind mode"));
+                    lcd.print(F("Save cable as GS"));
                   }
-                  Serial.print(F("Blind mode\n"));
+                  Serial.print(F("Save cable as Golden Sample\n"));
                   pinMode(HW_P[0], INPUT);
                   pinMode(HW_P[1], INPUT);
                   pinMode(HW_P[2], OUTPUT);
@@ -663,8 +744,27 @@ void loop()
             pinMode(HW_P[i], OUTPUT);
             last_blink = millis();
         }
-        
+
+        //Read and Update golden sample
+        if(State.mode == 3)
+        {
+            wait = 1;
+            if(digitalRead(BUTTON_OK) == 0)
+            {
+                save_golden_standard();
+                delay(500);
+                //turn mode led back on
+                pinMode(HW_P[0], INPUT);
+                pinMode(HW_P[1], INPUT);
+                pinMode(HW_P[2], OUTPUT);
+                digitalWrite(HW_P[0], LOW);
+                digitalWrite(HW_P[1], LOW);
+                digitalWrite(HW_P[2], HIGH);
+            }
+        }
+        else wait = 0;
     }
+    
     pinMode(HW_P[i], INPUT);
     digitalWrite(HW_P[i], LOW);
     
@@ -709,6 +809,18 @@ void loop()
   {
 //    digitalWrite(MASTER_GOOD, HIGH);
     SoftPWMSet(MASTER_GOOD, GREEN_BRIGHTNESS);
+    //if cable template is empty blink the green led a few times
+    if(C.tot_pins == 1)
+    {
+        Serial.println(F("Cable template is empty!!!"));
+        for(int i = 0; i < 5; i++)
+        {
+            SoftPWMSet(MASTER_GOOD, GREEN_BRIGHTNESS);
+            delay(250);
+            SoftPWMSet(MASTER_GOOD, 0);
+            delay(250);
+        }
+    }
     if(Hardware.lcd == true)
     {
       lcd.clear();
@@ -717,6 +829,9 @@ void loop()
       lcd.setCursor(0, 1);
       lcd.print(F("Press RESET"));
     }
+    if(C.tot_pins == 1)
+        Serial.print(F("##### CABLE TESTING DONE -> NO TEMPLATE (send r or R for rerun ... #####"));
+    else
     Serial.println(F("##### CABLE TESTING DONE -> CABLE OK (send r or R for rerun ... #####"));
     Serial.println();
   }
