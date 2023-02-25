@@ -169,7 +169,7 @@ err check_pin(cable C, const int i, const modes OP_mode)
 
   pinMode(HW_P[i], OUTPUT);
   digitalWrite(HW_P[i], HIGH);
-  delay(10);  //Wait to settle
+  delayMicroseconds(100);  //Wait to settle
 
   int j = 0;
   while(C.T[i][j] != -1)  //Check for (correct) conectivity
@@ -377,6 +377,7 @@ void setup()
   */
 
   //complicated test cable
+  /*
   {
   ///*
   C.CI = 14;
@@ -443,8 +444,8 @@ void setup()
   C.T[14][0] = 26;
   C.T[14][1] = 43;
   C.T[14][2] = -1;
-  //*/
   }
+  //*/
 
   //Arduino Nano test cable
   /*
@@ -461,6 +462,28 @@ void setup()
   C.T[1][1] = -1;
   */
 
+  //Demo cable
+  C.CI = 4;
+  C.CO_1 = 33;
+  C.CO_2 = 33;
+  C.CO_3 = 33;
+  C.tot_pins = 34;
+  
+  C.T[0][0] = 29;
+  C.T[0][1] = -1;
+
+  C.T[1][0] = 30;
+  C.T[1][1] = -1;
+
+  C.T[2][0] = 31;
+  C.T[2][1] = -1;
+
+  C.T[3][0] = 32;
+  C.T[3][1] = -1;
+
+  C.T[4][0] = 33;
+  C.T[4][1] = -1;
+
   //Used hardware configuration
   Hardware.lcd = false;
   Hardware.board = 0;
@@ -474,7 +497,7 @@ void setup()
   pinMode(BUTTON_RESET, INPUT_PULLUP);
   pinMode(BUTTON_OK, INPUT_PULLUP);
 
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   //Default mode is fast
   State.mode = 1;
@@ -628,7 +651,7 @@ void loop()
         }
 
         //Reading Led speed potentiometer
-        State.led_speed = map(0, 255, 50, 200, analogRead(POT_LED_SPEED));
+        State.led_speed = map(analogRead(POT_LED_SPEED), 0, 255, 5, 50);
         //for(int i = 29, i < 44, i++)
         if(millis() - last_blink > State.led_speed)
         {
@@ -673,7 +696,7 @@ void loop()
     {
       error_found = 1;
       concat_errors(&master_error_list, &rep);
-      Serial.print(F("Concat_function_returned"));
+      //Serial.print(F("Concat_function_returned"));
     }
     if(reset_happened)
     {
