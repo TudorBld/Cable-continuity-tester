@@ -438,6 +438,114 @@ void save_golden_standard()
 }
 
 
+void save_golden_standard_V2()
+{
+    Serial.println(F("BEGIN READING GOLDEN SAMPLE"));
+    
+    //save total number of available pins depending on board model
+    int k = 0;
+    switch(Hardware.board)
+    {
+        case 0:
+            k = 44;
+            break;
+        case 1:
+            k = 9;
+    }
+    //Create the frequency vector
+    char V[k];
+    for(int i = 0; i < k; i++)
+    {
+        V[i] = 0;
+    }
+
+    cable GS;
+    //Initialise the new template as empty
+    for(int p = 0; p < 50; p++)
+    {
+        GS.T[p][0] = -1;
+        GS.T[p][1] = -1;
+        GS.T[p][2] = -1;
+        GS.T[p][3] = -1;
+        GS.T[p][4] = -1;
+    }
+
+    //Set all pins to input low
+    for(int i = 0; i < k; i++)
+    {
+        pinMode(HW_P[i], INPUT);
+        digitalWrite(HW_P[i], LOW);
+    }
+    //turn master good and master error leds off
+    SoftPWMSet(MASTER_GOOD, 0);
+    SoftPWMSet(MASTER_ERROR, 0);
+
+    int max_root = 0;   //ID of the last root (in the HW_P order)
+    for(int i = 0; i < k; i++)
+    {
+        digitalWrite(HW_P[i], HIGH);
+        pinMode(HW_P[i], OUTPUT);
+
+        if(V[i] == 0)   //Check if current pin already belongs to a net
+        {
+            int link_nr = 0;
+            for(int j = i + 1; j < k; j++)
+            {
+                if(digitalRead(HW_P[j]) == 1 && V[j] == 0)
+                {
+                    if(link_nr == 0)
+                    {
+                        max_root = i;
+                    }
+                    if(link_nr < 5)
+                    {
+                        GS.T[i][link_nr] = j;
+                        link_nr ++;
+                        V[j] = 1;
+                        Serial.print(i);
+                        Serial.print(F(" "));
+                        Serial.println(j);
+                    }
+                    else
+                    {
+                        Serial.println(F("ERROR!...TOO MANY WIRES CONNECTED TOGETHER!"));
+                        if(Hardware.lcd == true)
+                        {
+                            lcd.setCursor(0, 0);
+                            lcd.print(F("ERROR!"));
+                            lcd.setCursor(0, 1);
+                            lcd.print(F("READ INCORRECT"));
+                        }
+                    }
+                }
+            }
+        }
+        
+        pinMode(HW_P[i], INPUT);
+        digitalWrite(HW_P[i], LOW);
+        V[i] = 1;
+    }
+    //Check if the GS.T is empty
+    if(max_root != 0 || GS.T[0][0] != -1)
+    {
+        GS.tot_pins = k;
+        GS.CI = max_root;
+        GS.CO_1 = GS.CO_2 = GS.CO_3 = k - 1;
+
+        //sss
+        C = GS;
+        Serial.println(F("GS SAVED"));
+    }
+    else
+    {
+        Serial.println(F("READED CABLE IS EMPTY! READ IS NOT SAVED!"));
+    }
+    
+    //turn master good and master error leds back on
+    SoftPWMSet(MASTER_GOOD, GREEN_BRIGHTNESS);
+    SoftPWMSet(MASTER_ERROR, RED_BRIGHTNESS);
+}
+
 void setup()
 {
   //Initializing the cable
@@ -623,7 +731,7 @@ void loop()
       lcd.print(F("Choose a mode:"));
       lcd.setCursor(0, 1);
     }
-    Serial.print(F("\nChoose a mode:\n"));
+    Serial.print(F("\nChoose a mode: (send 'n' for next option or 's' for selecting)\n"));
     
     if(State.mode == 1)
     {
@@ -664,10 +772,13 @@ void loop()
 
     int i = 29; //Incrementing variable for displaying led speed
     int wait = 0;
-    while(digitalRead(BUTTON_OK) || wait == 1)
+    char command = 0;
+    while( (digitalRead(BUTTON_OK) && command != 's') || wait == 1)
     {
+        command = Serial.read();
+        
         //Reading "Next" button presses
-        if(digitalRead(BUTTON_NEXT) == 0 && millis() - last_time > 700)
+        if( (digitalRead(BUTTON_NEXT) == 0 || command == 'n') && millis() - last_time > 700)
         {
             State.mode++;
             if(State.mode == 4)
@@ -729,10 +840,15 @@ void loop()
                   break;
             }
             last_time = millis();
+            //Empty Serial input
+            while(Serial.read() >= 0)
+            {
+                ;
+            }
         }
 
         //Reading Led speed potentiometer
-        State.led_speed = map(analogRead(POT_LED_SPEED), 0, 255, 5, 50);
+        State.led_speed = map(analogRead(POT_LED_SPEED), 0, 255, 5, 150);
         //for(int i = 29, i < 44, i++)
         if(millis() - last_blink > State.led_speed)
         {
@@ -746,12 +862,12 @@ void loop()
         }
 
         //Read and Update golden sample
-        if(State.mode == 3)
+        if(State.mode == 3 || command == 's')
         {
             wait = 1;
             if(digitalRead(BUTTON_OK) == 0)
             {
-                save_golden_standard();
+                save_golden_standard_V2();
                 delay(500);
                 //turn mode led back on
                 pinMode(HW_P[0], INPUT);
@@ -760,9 +876,20 @@ void loop()
                 digitalWrite(HW_P[0], LOW);
                 digitalWrite(HW_P[1], LOW);
                 digitalWrite(HW_P[2], HIGH);
+
+                //Empty Serial input
+                while(Serial.read() >= 0)
+                {
+                    ;
+                }
             }
         }
         else wait = 0;
+    }
+    //Empty Serial input
+    while(Serial.read() >= 0)
+    {
+        ;
     }
     
     pinMode(HW_P[i], INPUT);
@@ -830,9 +957,9 @@ void loop()
       lcd.print(F("Press RESET"));
     }
     if(C.tot_pins == 1)
-        Serial.print(F("##### CABLE TESTING DONE -> NO TEMPLATE (send r or R for rerun ... #####"));
+        Serial.print(F("##### CABLE TESTING DONE -> NO TEMPLATE (send r or R for rerun ...) #####"));
     else
-    Serial.println(F("##### CABLE TESTING DONE -> CABLE OK (send r or R for rerun ... #####"));
+    Serial.println(F("##### CABLE TESTING DONE -> CABLE OK (send r or R for rerun ...) #####"));
     Serial.println();
   }
   else
