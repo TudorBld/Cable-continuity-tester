@@ -38,20 +38,20 @@ void loop()
     PORTE = B11111111;
     PORTE = B00000000;
 
-    PORTE = B11111111;
-    PORTE = B00000000;
-
-    PORTE = B11111111;
-    PORTE = B00000000;
-
-    PORTE = B11111111;
-    PORTE = B00000000;
-
-    PORTE = B11111111;
-    PORTE = B00000000;
-
-    PORTE = B11111111;
-    PORTE = B00000000;
+//    PORTE = B11111111;
+//    PORTE = B00000000;
+//
+//    PORTE = B11111111;
+//    PORTE = B00000000;
+//
+//    PORTE = B11111111;
+//    PORTE = B00000000;
+//
+//    PORTE = B11111111;
+//    PORTE = B00000000;
+//
+//    PORTE = B11111111;
+//    PORTE = B00000000;
     
     //delay(100);
     //while(true);
