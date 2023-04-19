@@ -12,12 +12,12 @@ It uses an Arduino mega in order to satify the potentially high number of wires 
 - LED indication of errors
 - LCD display for detailed explanation of errors
 - Different testing modes:
-  - Fast: tests all connetctions at high speed and shows a list of errors
-  - Manual: tests the next connection when user input is detected
-  - Stop on error: if current wire is OK, jumpes to the next. Otherwise waits for user input.
-  - Blind: checks without template. Shows where every wire goes.
 - Accept a golden standard cable template
-- Be able to accept a new template without reprogramming the arduino.
+- Be able to accept the new template without reprogramming the arduino.
+  - Fast: tests all connetctions at high speed and shows a list of errors
+  - Stop on error: if current wire is OK, jumpes to the next. Otherwise waits for user input.
+  - Read and Save Golden Sample
+
 
 \
 \*\
