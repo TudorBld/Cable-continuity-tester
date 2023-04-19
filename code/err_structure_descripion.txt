@@ -1,3 +1,5 @@
+=================================================
+
 #define MAX_ERRORS 10
 
 struct err
@@ -12,15 +14,45 @@ struct err
 
 };
 
-## Is a structure witch holds data about found errors.
 
-!!! ATENTION: the number of errors within an err variable must not exceed MAX_ERRORS!
+==================================================
 
-err_count - counts the number of errors detected.
-err_list[MAX_ERRORS][3] - a 2-dimensional array whitch holds error data about specific pins
-|a| - ID of faulty input pin
-|b| - ID of error
-|c| - ID of destination pin
+	definitions:
+-open circuit error (id: 0): when the test signal should reach an output pin, but it does not.
+
+-mismatch error (id: 1): when a test signal is detected on another output pin than expected.
+
+-Y error (id: 2) (Not used): when a test signal arrives on multiple incorrect output pins. This error type is not used because it harder to display then simply displaying multiple mismatch errors.
+
+-Short circuit error (id: 3): when a test signal arrives to another input pin.
+
+
+
+## This is a structure witch holds data about found errors.
+
+!!! ATENTION: the number of errors within an err variable must not exceed MAX_ERRORS! Otherwise the code might run into an "index out of bounds" type of error.
+
+The elements of the structure are exlained here:
+
+	err_count - counts the number of errors detected.
+
+	err_list[MAX_ERRORS][3] - a 2-dimensional array whitch holds error data about specific pins
+
+		Example:
+		.err_count = 5 - a report containing 5 erors
+
+			first error in the report
+		.err_list[0][0] - ID of faulty input pin
+		.err_list[0][1] - error type (id of error)
+		.err_list[0][2] - ID of destination pin
+
+			second error in the report
+		.err_list[1][0] - ID of faulty input pin
+		.err_list[1][1] - error type (id of error)
+		.err_list[1][2] - ID of destination pin
+
+				......
+
 
 ## The final report
-The final report will contain no more than MAX_ERRORS errors. It will be analized by an analizing function. (multiple X errors on the same input pin will be tranformed into a Y error)
+The final report will contain no more than MAX_ERRORS errors.

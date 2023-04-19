@@ -29,8 +29,8 @@ T[1] - 1-dimensional array with the id-s of the pins connected to the second inp
  ... 
 T[n] - 1-dimensional array with the id-s of the pins connected to the first n'th pin
 
-T[1][1] = k - k is the ID of the output pin connected to input pin 1.
-T[1][2] = m - m is the ID of the output pin connected to input pin 1.	// For input pins with multiple output pins
+T[1][1] = k , where k is the ID of the output pin connected to input pin 1.
+T[1][2] = m , where m is the ID of the output pin connected to input pin 1.	// For input pins with multiple output pins
 
 After the last pin int in the row, a special value is added to mark the end of the row. This special value is -1.
 
@@ -43,9 +43,9 @@ After the last pin int in the row, a special value is added to mark the end of t
 	    ######################           ######################
 
 The array is:
-T[0] : 3 -1
-T[1] : 4 -1
-T[2] : 5 -1
+T[0] : {3, -1}
+T[1] : {4, -1}
+T[2] : {5, -1}
 
 ## EXAMPLE 2
                                                   ######################
@@ -56,9 +56,9 @@ T[2] : 5 -1
 	    ######################                ######################
 
 The array is:
-T[0] : 3 4 -1
-T[1] : 5 -1
-T[2] : 6 -1
+T[0] : {3, 4, -1}
+T[1] : {5, -1}
+T[2] : {6, -1}
 
 
 
