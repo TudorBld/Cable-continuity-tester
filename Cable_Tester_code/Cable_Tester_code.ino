@@ -1,4 +1,7 @@
 #define MAX_ERRORS 50       //Max number of errors that can be stored in the list of errors
+#define MAX_ROOTS 30        //Max number of rows in the T matrix
+#define MAX_WIRES_IN_NET 8  //Max number of wires +1 connected to a root wire
+
 #define MASTER_GOOD A14     //Master good LED port  (turns on when all test completed without errors)
 #define MASTER_ERROR A15    //Master error LED port (turns on on any error)
 #define BUTTON_NEXT A8      //"Next" Button Port
@@ -94,7 +97,7 @@ T[2] : 6 -1
   int CO_2 = -1;    //Last sequential pin number of OUTPUT CONNECTOR 2
   int CO_3 = -1;    //Last sequential pin number of OUTPUT CONNECTOR 3
 
-  int T[50][10];
+  int T[MAX_ROOTS][MAX_WIRES_IN_NET];
 };
 
 struct err
@@ -461,13 +464,12 @@ void save_golden_standard_V2()
 
     cable GS;
     //Initialise the new template as empty
-    for(int p = 0; p < 50; p++)
+    for(int p = 0; p < MAX_ROOTS; p++)
     {
-        GS.T[p][0] = -1;
-        GS.T[p][1] = -1;
-        GS.T[p][2] = -1;
-        GS.T[p][3] = -1;
-        GS.T[p][4] = -1;
+        for(int pp = 0; pp < MAX_WIRES_IN_NET; pp++)
+        {
+            GS.T[p][pp] = -1;
+        }
     }
 
     //Set all pins to input low
@@ -672,6 +674,7 @@ void setup()
   C.T[4][0] = 33;
   C.T[4][1] = -1;
 
+
   //Used hardware configuration
   Hardware.lcd = false;
   Hardware.board = 0;
@@ -686,6 +689,10 @@ void setup()
   pinMode(BUTTON_OK, INPUT_PULLUP);
 
   Serial.begin(115200);
+
+  //DEBUG
+  Serial.print("size of C: ");
+  Serial.println(sizeof(C));
 
   //Default mode is fast
   State.mode = 1;
