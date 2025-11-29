@@ -862,10 +862,10 @@ void loop()
         }
 
         //Read and Update golden sample
-        if(State.mode == 3 || command == 's')
+        if(State.mode == 3)
         {
             wait = 1;
-            if(digitalRead(BUTTON_OK) == 0)
+            if(digitalRead(BUTTON_OK) == 0 || command == 's')
             {
                 save_golden_standard_V2();
                 delay(500);
@@ -957,9 +957,9 @@ void loop()
       lcd.print(F("Press RESET"));
     }
     if(C.tot_pins == 1)
-        Serial.print(F("##### CABLE TESTING DONE -> NO TEMPLATE (send r or R for rerun ...) #####"));
+        Serial.print(F("##### CABLE TESTING DONE -> NO TEMPLATE (send r for rerun, or x to return to menu ...) #####"));
     else
-    Serial.println(F("##### CABLE TESTING DONE -> CABLE OK (send r or R for rerun ...) #####"));
+    Serial.println(F("##### CABLE TESTING DONE -> CABLE OK (send r for rerun, or x to return to menu ...) #####"));
     Serial.println();
   }
   else
@@ -980,7 +980,7 @@ void loop()
     }
     else
     {
-      Serial.println(F("##### CABLE TESTING DONE -> ERRORS FOUND (send r or R for rerun ... #####"));
+      Serial.println(F("##### CABLE TESTING DONE -> ERRORS FOUND (send r or R for rerun, or x to return to menu ...) #####"));
       Serial.println();
       
       if(Hardware.lcd == true)
@@ -999,12 +999,25 @@ void loop()
   //Waiting for input
   while(true)
   {
+    char command = Serial.read();
+    
     if(reset_happened == 0)
     {
       reset_happened = !digitalRead(BUTTON_RESET);
+      if(command == 'x' || command == 'X')
+        reset_happened = 1;
+        while(Serial.read() >= 0)
+        {
+          ;
+        }
+        
+        if(reset_happened == 1)
+        {
+          break;
+        }
     }
-    char Redo = Serial.read();
-    if(Redo == 'r' || Redo == 'R' || reset_happened || digitalRead(BUTTON_OK) == 0)
+    
+    if(command == 'r' || command == 'R' || reset_happened || digitalRead(BUTTON_OK) == 0)
     {
       while(Serial.read() >= 0)
       {
