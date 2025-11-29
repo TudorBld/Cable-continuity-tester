@@ -1,4 +1,4 @@
-#define MAX_ERRORS 10       //Max number of errors that can be stored in the list of errors
+#define MAX_ERRORS 50       //Max number of errors that can be stored in the list of errors
 #define MASTER_GOOD A14     //Master good LED port  (turns on when all test completed without errors)
 #define MASTER_ERROR A15    //Master error LED port (turns on on any error)
 #define BUTTON_NEXT A8      //"Next" Button Port
@@ -94,7 +94,7 @@ T[2] : 6 -1
   int CO_2 = -1;    //Last sequential pin number of OUTPUT CONNECTOR 2
   int CO_3 = -1;    //Last sequential pin number of OUTPUT CONNECTOR 3
 
-  int T[50][5];
+  int T[50][10];
 };
 
 struct err
