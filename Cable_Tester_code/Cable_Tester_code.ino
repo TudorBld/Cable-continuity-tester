@@ -3,6 +3,7 @@
 //https://github.com/bhagman/SoftPWM  V1.0.1
 #include <LiquidCrystal_I2C.h>
 //https://github.com/johnrickman/LiquidCrystal_I2C  V1.1.2
+#include <EEPROM.h>
 
 #include "Macros.h"
 #include "Core_structs.h"
@@ -12,12 +13,14 @@
 int reset_happened = 1;
 LiquidCrystal_I2C lcd(0x27,20,4);  // set the LCD address to 0x27 for a 16 chars and 2 line display
 
+
 //Declare a cable variable and initialize it with data as described in the cable_template_format.txt file
 cable C;
 //Declare a modes variable for user interface info
 modes State;
 //Declare a hardware_model configuration
 hardware_model Hardware;
+
 
 // available pins in this array
 int HW_P[] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53};
@@ -374,7 +377,7 @@ void save_golden_standard_V2()
                     {
                         max_root = i;
                     }
-                    if(link_nr < 5)
+                    if(link_nr < MAX_WIRES_IN_NET)
                     {
                         GS.T[i][link_nr] = j;
                         link_nr ++;
@@ -411,7 +414,11 @@ void save_golden_standard_V2()
 
         //sss
         C = GS;
-        Serial.println(F("GS SAVED"));
+        
+        // save cable template on EEPROM;
+        EEPROM.write(0, CABLE_PRESENT);
+        EEPROM.put(1, GS);
+        Serial.println(F("GS SAVED on EEPROM"));
     }
     else
     {
@@ -434,27 +441,40 @@ void setup()
     }
  }
 
-  //Demo cable
-  C.CI = 4;
-  C.CO_1 = 33;
-  C.CO_2 = 33;
-  C.CO_3 = 33;
-  C.tot_pins = 34;
-  
-  C.T[0][0] = 29;
-  C.T[0][1] = -1;
+  //Initializing serial communication
+  Serial.begin(115200);
 
-  C.T[1][0] = 30;
-  C.T[1][1] = -1;
-
-  C.T[2][0] = 31;
-  C.T[2][1] = -1;
-
-  C.T[3][0] = 32;
-  C.T[3][1] = -1;
-
-  C.T[4][0] = 33;
-  C.T[4][1] = -1;
+  if(EEPROM.read(0) == CABLE_PRESENT)
+  {
+    Serial.print(F("CABLE TEMPLATE FOUND IN EEPROM. READING ..."));
+    EEPROM.get(1, C);
+    Serial.println(F("DONE"));
+  }
+  else
+  {
+    Serial.print(F("NO CABLE TEMPLATE FOUND IN EEPROM. LOADING DEMO CABLE ... DONE"));
+      //Demo cable
+      C.CI = 4;
+      C.CO_1 = 33;
+      C.CO_2 = 33;
+      C.CO_3 = 33;
+      C.tot_pins = 34;
+      
+      C.T[0][0] = 29;
+      C.T[0][1] = -1;
+    
+      C.T[1][0] = 30;
+      C.T[1][1] = -1;
+    
+      C.T[2][0] = 31;
+      C.T[2][1] = -1;
+    
+      C.T[3][0] = 32;
+      C.T[3][1] = -1;
+    
+      C.T[4][0] = 33;
+      C.T[4][1] = -1;
+  }
 
 
   //Used hardware configuration
@@ -470,11 +490,6 @@ void setup()
   pinMode(BUTTON_RESET, INPUT_PULLUP);
   pinMode(BUTTON_OK, INPUT_PULLUP);
 
-  Serial.begin(115200);
-
-  //DEBUG
-  Serial.print("size of C: ");
-  Serial.println(sizeof(C));
 
   //Default mode is fast
   State.mode = 1;
@@ -491,7 +506,7 @@ void setup()
     lcd.clear();
   }
 
-  Serial.print(digitalRead(BUTTON_OK));
+  //Serial.print(digitalRead(BUTTON_OK));
 }
 
 void loop()
