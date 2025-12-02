@@ -425,7 +425,14 @@ void save_golden_standard_V2()
 
 void setup()
 {
-  //Initializing the cable
+  //Initializing the cable as empthy
+  for(int ii = 0; ii < MAX_ROOTS; ii++)
+ {
+    for(int jj = 0; jj < MAX_WIRES_IN_NET; jj++)
+    {
+        C.T[ii][jj] = -1;
+    }
+ }
 
   //Demo cable
   C.CI = 4;
@@ -694,9 +701,30 @@ void loop()
   Serial.println(F("##### BEGIN CABLE TESTING ... #####"));
   int error_found = 0;
 
-  //Begin calling check algorithm
-  for(int in_pin = 0; in_pin <= C.CI; in_pin++)
+  //DEBUG - show the whole cable template
+  //for(int ii = 0; ii < MAX_ROOTS; ii++)
+  //{
+  //  for(int jj = 0; jj < MAX_WIRES_IN_NET; jj++)
+  //  {
+  //      Serial.print(C.T[ii][jj]);
+  //      Serial.print(" ");
+  //  }
+  //  Serial.println();
+  //}
+
+  //Begin calling check algorithm on wires that are inputs (roots)
+  int in_pin = 0;
+  int ii = 0;
+  
+  //for(int in_pin = 0; in_pin <= C.CI; in_pin++)
+  // for each pin that is root (input wire), we run the check function
+  while(C.T[ii][0] != -1 && ii < MAX_ROOTS)
   {
+    //DEBUG
+    //Serial.print("checked pin: ");
+    //Serial.println(ii);
+    
+    in_pin = ii;
     //check pin
     err rep;
     rep = check_pin(C, in_pin, State);
@@ -711,6 +739,7 @@ void loop()
     {
       break;
     }
+    ii++;
   }
 
   
