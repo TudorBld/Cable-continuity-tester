@@ -14,10 +14,11 @@
 #define BUTTON_NEXT A8      //"Next" Button Port
 #define BUTTON_RESET A9     //"Reset" Button Port
 #define BUTTON_OK A10       //"OK" Button Port
-#define POT_LED_SPEED A11   //Port for the led speed controll potentiometer
 
+#define POT_LED_SPEED A11   //Port for the led speed controll potentiometer
 #define RED_BRIGHTNESS 150   //Controls LED brightness
 #define GREEN_BRIGHTNESS 10   //Controls LED brightness
+#define CABLE_PRESENT 10    // number to store in the first byte of the EEPROM to mark the presence of a cable template
 
 
 #endif
