@@ -90,7 +90,8 @@ err check_pin(cable C, const int i, const modes OP_mode)
 
     if(not_tested == 1)   //Checking wires that are not_tested
     {
-      //check for short-circuit errors
+      //check for short-circuit errors - deprecated
+      /*
       if(j <= C.CI && digitalRead(HW_P[j]) == HIGH && i < j)
       {
         //digitalWrite(MASTER_ERROR, HIGH);
@@ -100,8 +101,10 @@ err check_pin(cable C, const int i, const modes OP_mode)
         report.err_list[report.err_count][2] = j;  //destination pin
         report.err_count ++;
       }
-      //check for mismatch errors
-      if(j > C.CI && j <= C.CO_3 && digitalRead(HW_P[j]) == HIGH)
+      */
+      //check for mismatch errors - deprecated
+
+      if(digitalRead(HW_P[j]) == HIGH)
       {
         //digitalWrite(MASTER_ERROR, HIGH);
         SoftPWMSet(MASTER_ERROR, RED_BRIGHTNESS);
@@ -558,11 +561,11 @@ void setup()
   {
     Serial.print(F("NO CABLE TEMPLATE FOUND IN EEPROM. LOADING DEMO CABLE ... DONE"));
       //Demo cable
-      C.CI = 4;
-      C.CO_1 = 33;
-      C.CO_2 = 33;
-      C.CO_3 = 33;
-      C.tot_pins = 34;
+      C.CI = MAX_ROOTS;
+      C.CO_1 = MAX_ROOTS;
+      C.CO_2 = MAX_ROOTS;
+      C.CO_3 = MAX_ROOTS;
+      C.tot_pins = MAX_ROOTS;
       
       C.T[0][0] = 29;
       C.T[0][1] = -1;
