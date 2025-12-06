@@ -430,6 +430,110 @@ void save_golden_standard_V2()
     SoftPWMSet(MASTER_ERROR, RED_BRIGHTNESS);
 }
 
+void save_golden_sample_V3()
+{
+  Serial.println("start reading golden sample...");
+
+  // k is the mak number of pins available
+  int k = 0;
+    switch(Hardware.board)
+    {
+        case 0:
+            k = 44;
+            break;
+        case 1:
+            k = 9;
+    }
+    if(k > MAX_ROOTS) k = MAX_ROOTS;  // We cannot exceed the max number of pins available, or the max number of rows available
+
+    //Initialise the new template as empty
+    cable GS;
+    for(int p = 0; p < MAX_ROOTS; p++)
+    {
+        for(int pp = 0; pp < MAX_WIRES_IN_NET; pp++)
+        {
+            GS.T[p][pp] = -1;
+        }
+    }
+
+    // Stop OK and ERROR leds
+    for(int i = 0; i <= k; i++)
+    {
+      pinMode(HW_P[i], INPUT);
+      digitalWrite(HW_P[i], LOW);
+    }
+
+    SoftPWMSet(MASTER_GOOD, 0);
+    SoftPWMSet(MASTER_ERROR, 0);
+
+    for(int i = 0; i < k; i++) // For each available pin
+    {
+      digitalWrite(HW_P[i], HIGH);
+      pinMode(HW_P[i], OUTPUT);
+
+      int found = 0;
+      for(int j = 0; j < k; j++) // For each available pin
+      {
+        if(j != i)  // Jump over the curent root
+        {
+          if(digitalRead(HW_P[j]) == HIGH)  // Found a return wire
+          {
+            if(found > MAX_WIRES_IN_NET)  // If we reached the max number of wires in a net
+            {
+              Serial.print("TOO MANY WIRES IN NET ");
+              Serial.println(i);
+            }
+            else  // Add the return pin to the root's list
+            {
+              GS.T[i][found] = j;
+              found++;
+            }
+          }
+        }
+      }
+
+      // set current pin too low
+      pinMode(HW_P[i], INPUT);
+      digitalWrite(HW_P[i], LOW);
+    }
+
+    // Check if any cable is connected
+    int emphty = 1;
+    for(int i = 0; i < k; i++)
+    {
+      if(GS.T[i][0] != -1) emphty = 0;
+    }
+
+    if(emphty == 1)
+    {
+      Serial.print(F("NO CABLE PRESENT!!! TEMPLATE NOT SAVED!"));
+    }
+    else
+    {
+      GS.tot_pins = k;
+      GS.CI = k;
+      GS.CO_1 = GS.CO_2 = GS.CO_3 = k - 1;
+
+      //sss
+      C = GS;
+      
+      // save cable template on EEPROM;
+      EEPROM.write(0, CABLE_PRESENT);
+      EEPROM.put(1, GS);
+      Serial.println(F("GS SAVED on EEPROM"));
+
+      for(int ii = 0; ii < MAX_ROOTS; ii++)
+      {
+        for(int jj = 0; jj < MAX_WIRES_IN_NET; jj++)
+        {
+          Serial.print(C.T[ii][jj]);
+          Serial.print(" ");
+        }
+        Serial.println();
+      }
+    }
+}
+
 void setup()
 {
   //Initializing the cable as empthy
@@ -671,7 +775,7 @@ void loop()
             wait = 1;
             if(digitalRead(BUTTON_OK) == 0 || command == 's')
             {
-                save_golden_standard_V2();
+                save_golden_sample_V3();
                 delay(500);
                 //turn mode led back on
                 pinMode(HW_P[0], INPUT);
@@ -733,13 +837,13 @@ void loop()
   
   //for(int in_pin = 0; in_pin <= C.CI; in_pin++)
   // for each pin that is root (input wire), we run the check function
-  while(C.T[ii][0] != -1 && ii < MAX_ROOTS)
+  while(C.T[i][0] != -1 && i < MAX_ROOTS)
   {
     //DEBUG
     //Serial.print("checked pin: ");
     //Serial.println(ii);
     
-    in_pin = ii;
+    in_pin = i;
     //check pin
     err rep;
     rep = check_pin(C, in_pin, State);
@@ -754,7 +858,7 @@ void loop()
     {
       break;
     }
-    ii++;
+    i++;
   }
 
   
