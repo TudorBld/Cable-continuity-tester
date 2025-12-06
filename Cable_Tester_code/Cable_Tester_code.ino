@@ -142,7 +142,7 @@ err check_pin(cable C, const int i, const modes OP_mode)
   //Put current pin back to INPUT and Return results
   digitalWrite(HW_P[i], LOW);
   pinMode(HW_P[i], INPUT);
-  delay(1);
+  delayMicroseconds(100);  //Wait to settle
   return report;
 }
 
@@ -830,23 +830,19 @@ void loop()
   //  }
   //  Serial.println();
   //}
-
-  //Begin calling check algorithm on wires that are inputs (roots)
-  int in_pin = 0;
-  int ii = 0;
   
   //for(int in_pin = 0; in_pin <= C.CI; in_pin++)
   // for each pin that is root (input wire), we run the check function
-  while(C.T[i][0] != -1 && i < MAX_ROOTS)
+  // while(C.T[i][0] != -1 && i < MAX_ROOTS) - this is just wrong
+  for(int i = 0; i < C.CO_3; i++)
   {
     //DEBUG
     //Serial.print("checked pin: ");
     //Serial.println(ii);
     
-    in_pin = i;
     //check pin
     err rep;
-    rep = check_pin(C, in_pin, State);
+    rep = check_pin(C, i, State);
     
     if(rep.err_count > 0)
     {
@@ -858,7 +854,6 @@ void loop()
     {
       break;
     }
-    i++;
   }
 
   
