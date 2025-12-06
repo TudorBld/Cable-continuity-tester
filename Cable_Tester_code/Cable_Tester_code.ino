@@ -31,6 +31,7 @@ int HW_P[] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 22, 23, 24, 25, 26, 27, 28
 //              0  1  2  3  4  5  6  7   8   9   10  11
 //See how to read from csv file
 
+int ARray[100][100];
 
 err check_pin(cable C, const int i, const modes OP_mode)
 {
@@ -106,12 +107,15 @@ err check_pin(cable C, const int i, const modes OP_mode)
 
       if(digitalRead(HW_P[j]) == HIGH)
       {
-        //digitalWrite(MASTER_ERROR, HIGH);
-        SoftPWMSet(MASTER_ERROR, RED_BRIGHTNESS);
-        report.err_list[report.err_count][0] = i;          //ID of faulty pin
-        report.err_list[report.err_count][1] = 1;          //error ID (in this case mismatch)
-        report.err_list[report.err_count][2] = j;  //destination pin
-        report.err_count ++;
+        if(report.err_count < MAX_ERRORS)
+        {
+          //digitalWrite(MASTER_ERROR, HIGH);
+          SoftPWMSet(MASTER_ERROR, RED_BRIGHTNESS);
+          report.err_list[report.err_count][0] = i;          //ID of faulty pin
+          report.err_list[report.err_count][1] = 1;          //error ID (in this case mismatch)
+          report.err_list[report.err_count][2] = j;  //destination pin
+          report.err_count ++;
+        }
       }
     }
   }

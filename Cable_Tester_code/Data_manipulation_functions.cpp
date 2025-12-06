@@ -12,7 +12,7 @@ void concat_errors(err *master, err *addition)
     master->err_count += addition->err_count;
 
     int b = 0;
-    for(int a = r; a < master->err_count; a++)
+    for(int a = r; a < master->err_count && a < MAX_ERRORS; a++)
     {
         master->err_list[a][0] = addition->err_list[b][0];
         master->err_list[a][1] = addition->err_list[b][1];

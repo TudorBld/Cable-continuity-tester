@@ -5,8 +5,8 @@
 
 #include <Arduino.h>
 
-#define MAX_ERRORS 50       //Max number of errors that can be stored in the list of errors
-#define MAX_ROOTS 30        //Max number of rows in the T matrix
+#define MAX_ERRORS 150       //Max number of errors that can be stored in the list of errors
+#define MAX_ROOTS 44        //Max number of rows in the T matrix
 #define MAX_WIRES_IN_NET 8  //Max number of wires +1 connected to a root wire
 
 #define MASTER_GOOD A14     //Master good LED port  (turns on when all test completed without errors)
