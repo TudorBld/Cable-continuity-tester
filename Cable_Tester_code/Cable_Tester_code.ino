@@ -135,10 +135,10 @@ err check_pin(cable C, const int i, const modes OP_mode)
     {
       if(reset_happened == 0)
       {
-        reset_happened = !digitalRead(BUTTON_RESET);
+        reset_happened = digitalRead(BUTTON_RESET);
       }
       char next = Serial.read();
-      if(digitalRead(BUTTON_NEXT) == 0 || next == 'c' || next == 'C' || reset_happened)
+      if(digitalRead(BUTTON_NEXT) == 1 || next == 'c' || next == 'C' || reset_happened)
       {
         while(Serial.read() >= 0)
         {
@@ -216,7 +216,7 @@ void print_err_str_lcd(err *errors)
 
         //DEBUG
         delay(400);
-        while(digitalRead(BUTTON_NEXT) == 1);
+        while(digitalRead(BUTTON_NEXT) == 0);
 
         //Set current faulty pin to INPUT LOW
         digitalWrite(HW_P[errors->err_list[current_error][0]], LOW);
@@ -694,7 +694,7 @@ void loop()
         command = Serial.read();
         
         //Reading "Next" button presses
-        if( (digitalRead(BUTTON_NEXT) == 0 || command == 'n') && millis() - last_time > 700)
+        if( (digitalRead(BUTTON_NEXT) == 1 || command == 'n') && millis() - last_time > 700)
         {
             State.mode++;
             if(State.mode == 4)
@@ -938,7 +938,7 @@ void loop()
     
     if(reset_happened == 0)
     {
-      reset_happened = !digitalRead(BUTTON_RESET);
+      reset_happened = digitalRead(BUTTON_RESET);
       if(command == 'x' || command == 'X')
       {
         reset_happened = 1;
