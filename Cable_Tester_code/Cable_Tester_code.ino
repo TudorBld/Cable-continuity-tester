@@ -23,15 +23,17 @@ hardware_model Hardware;
 
 
 // available pins in this array
-int HW_P[] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53};
+//old
+//int HW_P[] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53};
+//////          0  1  2  3  4  5  6  7   8   9  10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38  39  40  41  42  43
+
+int HW_P[] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 32, 33, 34, 35, 36, 37, 38};
 ////          0  1  2  3  4  5  6  7   8   9  10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38  39  40  41  42  43
 
 //For arduino nano
 //int HW_P[] = {2, 3, 5, 6, 7, 8, 9, 10, 11};
 //              0  1  2  3  4  5  6  7   8   9   10  11
 //See how to read from csv file
-
-int ARray[100][100];
 
 err check_pin(cable C, const int i, const modes OP_mode)
 {
@@ -127,6 +129,7 @@ err check_pin(cable C, const int i, const modes OP_mode)
   //Stop on error mode
   if(OP_mode.mode == 2 && report.err_count > 0)
   {
+    Serial.println(F("Error found! Send 'c' or 'C' to continue"));
     delay(500); //Do not register previous long presses
     while(1)
     {
@@ -244,7 +247,6 @@ void print_S(err report)
   }
 }
 
-
 void save_golden_standard()
 {
     Serial.println(F("Begin golden sample reading..."));
@@ -325,7 +327,6 @@ void save_golden_standard()
     Serial.println(F("Cable saved as Golden Sample"));
 }
 
-
 void save_golden_standard_V2()
 {
     Serial.println(F("BEGIN READING GOLDEN SAMPLE"));
@@ -335,7 +336,7 @@ void save_golden_standard_V2()
     switch(Hardware.board)
     {
         case 0:
-            k = 44;
+            k = MAX_ROOTS;
             break;
         case 1:
             k = 9;
@@ -446,7 +447,7 @@ void save_golden_sample_V3()
     switch(Hardware.board)
     {
         case 0:
-            k = 44;
+            k = MAX_ROOTS;
             break;
         case 1:
             k = 9;
@@ -463,8 +464,8 @@ void save_golden_sample_V3()
         }
     }
 
-    // Stop OK and ERROR leds
-    for(int i = 0; i <= k; i++)
+    // Turn off all leds
+    for(int i = 0; i < k; i++)
     {
       pinMode(HW_P[i], INPUT);
       digitalWrite(HW_P[i], LOW);
@@ -519,7 +520,7 @@ void save_golden_sample_V3()
     {
       GS.tot_pins = k;
       GS.CI = k;
-      GS.CO_1 = GS.CO_2 = GS.CO_3 = k - 1;
+      GS.CO_1 = GS.CO_2 = GS.CO_3 = k;
 
       //sss
       C = GS;
@@ -651,7 +652,7 @@ void loop()
     if(State.mode == 1)
     {
         if(Hardware.lcd == true) lcd.print(F("Fast mode"));
-        Serial.print(F("Fast mode\n"));
+        Serial.print(F("mode: Fast mode\n"));
 
         pinMode(HW_P[0], OUTPUT);
         pinMode(HW_P[1], INPUT);
@@ -663,7 +664,7 @@ void loop()
     if(State.mode == 2)
     {
         if(Hardware.lcd == true) lcd.print(F("Stop on error"));
-        Serial.print(F("Stop on error\n"));
+        Serial.print(F("mode: Stop on error\n"));
 
         pinMode(HW_P[0], INPUT);
         pinMode(HW_P[1], OUTPUT);
@@ -675,7 +676,7 @@ void loop()
     if(State.mode == 3)
     {
         if(Hardware.lcd == true) lcd.print(F("Save as GS"));
-        Serial.print(F("Save as Golden Sample\n"));
+        Serial.print(F("mode: Save as Golden Sample\n"));
 
         pinMode(HW_P[0], INPUT);
         pinMode(HW_P[1], INPUT);
@@ -685,7 +686,7 @@ void loop()
         digitalWrite(HW_P[2], HIGH);
     }
 
-    int i = 29; //Incrementing variable for displaying led speed
+    int i = 22; //Incrementing variable for displaying led speed
     int wait = 0;
     char command = 0;
     while( (digitalRead(BUTTON_OK) && command != 's') || wait == 1)
@@ -711,7 +712,7 @@ void loop()
                         lcd.setCursor(0, 1);
                         lcd.print(F("Fast mode"));
                     }
-                    Serial.print(F("Fast mode\n"));
+                    Serial.print(F("mode: Fast mode\n"));
                     pinMode(HW_P[0], OUTPUT);
                     pinMode(HW_P[1], INPUT);
                     pinMode(HW_P[2], INPUT);
@@ -728,7 +729,7 @@ void loop()
                         lcd.setCursor(0, 1);
                         lcd.print(F("Stop on error"));
                   }
-                  Serial.print(F("Stop on error\n"));
+                  Serial.print(F("mode: Stop on error\n"));
                   pinMode(HW_P[0], INPUT);
                   pinMode(HW_P[1], OUTPUT);
                   pinMode(HW_P[2], INPUT);
@@ -745,7 +746,7 @@ void loop()
                     lcd.setCursor(0, 1);
                     lcd.print(F("Save cable as GS"));
                   }
-                  Serial.print(F("Save cable as Golden Sample\n"));
+                  Serial.print(F("mode: Save cable as Golden Sample\n"));
                   pinMode(HW_P[0], INPUT);
                   pinMode(HW_P[1], INPUT);
                   pinMode(HW_P[2], OUTPUT);
@@ -770,7 +771,7 @@ void loop()
             pinMode(HW_P[i], INPUT);
             digitalWrite(HW_P[i], LOW);
             i++;
-            if(i >= 44) i = 29;
+            if(i >= 37) i = 22;
             digitalWrite(HW_P[i], HIGH);
             pinMode(HW_P[i], OUTPUT);
             last_blink = millis();
@@ -791,6 +792,8 @@ void loop()
                 digitalWrite(HW_P[0], LOW);
                 digitalWrite(HW_P[1], LOW);
                 digitalWrite(HW_P[2], HIGH);
+
+                Serial.println(F("mode: Save cable as Golden Sample"));
 
                 //Empty Serial input
                 while(Serial.read() >= 0)
@@ -937,12 +940,14 @@ void loop()
     {
       reset_happened = !digitalRead(BUTTON_RESET);
       if(command == 'x' || command == 'X')
+      {
         reset_happened = 1;
         while(Serial.read() >= 0)
         {
           ;
         }
-        
+      }
+       
         if(reset_happened == 1)
         {
           break;
